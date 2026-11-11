@@ -10,10 +10,9 @@ A collection of enterprise-grade, highly reusable, and production-tested Terrafo
 
 ## Design Principles
 
-- **Data-Driven Infrastructure**: Complex, multi-resource topologies (e.g., multiple VPCs, subnets, NAT gateways, and firewall policies) can be declared cleanly via human-readable YAML configurations, decoupling code logic from environmental data.
-- **Security by Default**: Modules follow Google Cloud best practices and CIS GCP Benchmark recommendations—including private-only subnets, Private Google Access, Cloud NAT for controlled egress, and explicit least-privilege firewall rules.
-- **Modularity & Composition**: Designed to chain cleanly into downstream modules (such as GKE, Cloud SQL, Compute Engine, and Cloud Run) using rich lookup maps and structured outputs.
-- **Consistency**: Standardized file conventions, naming standards, and version pinning across all modules.
+- **Data-Driven Infrastructure**: Complex network topologies—including VPCs, multi-region subnets, Cloud Routers with BGP, Cloud NAT gateways, Private Service Access, and firewall policies—are declared via human-readable YAML configurations.
+- **Official Module Alignment**: Built following the architecture and feature sets of [`terraform-google-modules/network/google`](https://registry.terraform.io/modules/terraform-google-modules/network/google/latest), [`terraform-google-modules/cloud-router/google`](https://registry.terraform.io/modules/terraform-google-modules/cloud-router/google/latest), and [`terraform-google-modules/cloud-nat/google`](https://registry.terraform.io/modules/terraform-google-modules/cloud-nat/google/latest).
+- **Security by Default**: Private-only subnets, Private Google Access, Private Service Access for managed databases, Cloud NAT for controlled egress, and explicit least-privilege firewall rules.
 
 ---
 
@@ -23,13 +22,14 @@ A collection of enterprise-grade, highly reusable, and production-tested Terrafo
 gcp-terraform-custom-modules/
 ├── networking-infrastructure/                # Core networking domain
 │   ├── README.md                             # Networking overview & domain docs
-│   └── vpc-subnet-router-nat-firewall/       # Multi-VPC, subnets, routers, NAT & firewalls
+│   └── vpc-subnet-router-nat-firewall/       # VPC, subnets, BGP routers, NAT, firewalls & PSA
 │       ├── 0-locals.tf
 │       ├── 1-vpc.tf
 │       ├── 2-subnetworks.tf
 │       ├── 3-cloud-router.tf
 │       ├── 4-cloud-nat.tf
 │       ├── 5-firewall.tf
+│       ├── 6-private-service-access.tf
 │       ├── variables.tf
 │       ├── outputs.tf
 │       ├── versions.tf
@@ -46,26 +46,7 @@ gcp-terraform-custom-modules/
 
 | Module | Description | Directory |
 |---|---|---|
-| **Multi-VPC, Subnets, Router, NAT & Firewall** | End-to-end multi-VPC networking provisioned via YAML. Supports secondary IP ranges for GKE, Cloud Routers, auto-allocating Cloud NAT gateways, and dynamic ingress/egress firewall rules. | [`networking-infrastructure/vpc-subnet-router-nat-firewall`](./networking-infrastructure/vpc-subnet-router-nat-firewall/) |
-
----
-
-## Prerequisites
-
-Before utilizing these modules, ensure your local environment or CI/CD runner has:
-
-1. **Terraform CLI**: Version `>= 1.5.0` installed.
-2. **Google Cloud SDK (`gcloud`)**: Installed and authenticated.
-3. **GCP Authentication**:
-   ```bash
-   gcloud auth application-default login
-   ```
-   Or set the service account credentials via environment variable:
-   ```bash
-   export GOOGLE_APPLICATION_CREDENTIALS="/path/to/key.json"
-   ```
-4. **Required GCP APIs Enabled**:
-   - `compute.googleapis.com`
+| **VPC, Subnets, BGP Router, NAT, Firewall & PSA** | End-to-end VPC networking provisioned via YAML. Supports multi-region subnets, secondary ranges for GKE, VPC flow logs, Cloud Routers with detailed BGP configuration, Cloud NAT gateways, Private Service Access (`servicenetworking.googleapis.com`), and ingress/egress firewall rules. | [`networking-infrastructure/vpc-subnet-router-nat-firewall`](./networking-infrastructure/vpc-subnet-router-nat-firewall/) |
 
 ---
 
@@ -74,75 +55,93 @@ Before utilizing these modules, ensure your local environment or CI/CD runner ha
 ### 1. Define your network specification in `network-config.yaml`:
 
 ```yaml
-project_id: "my-gcp-project-id"
+project_id: yuvaraj-internal-project
+region: asia-south1
 
-vpcs:
-  - name: "prod-vpc"
-    routing_mode: "GLOBAL"
+tags:
+  provisioned_by: terraform
+  environment: dev
+  project: gcp-platform-foundation-terraform
+
+network:
+  vpc:
+    network_name: platform-foundation-vpc
+
+    # Optional Private Service Access (for Cloud SQL, Memorystore, etc.)
+    private_service_access:
+      enabled: true
+      name: google-managed-services-psa
+      prefix_length: 16
 
     subnets:
-      - name: "prod-apps"
-        ip_cidr: "10.10.1.0/24"
-        region: "us-central1"
-        private_access: true
-        secondary_ranges:
-          - name: "gke-pods"
-            ip_cidr: "10.20.0.0/16"
-          - name: "gke-services"
-            ip_cidr: "10.30.0.0/20"
-
-    nats:
-      - name: "prod-nat"
-        region: "us-central1"
-        log_filter: "ERRORS_ONLY"
+      - subnet_name: private-subnet-mumbai
+        subnet_ip: 10.20.1.0/24
+        subnet_region: asia-south1
+        subnet_private_access: true
+      - subnet_name: private-subnet-singapore
+        subnet_ip: 10.30.1.0/24
+        subnet_region: asia-southeast1
+        subnet_private_access: true
 
     firewall_rules:
-      - name: "allow-internal"
-        direction: "INGRESS"
-        source_ranges: ["10.10.0.0/16"]
-        allows:
-          - protocol: "all"
+      ingress:
+        - name: allow-iap-ssh
+          source_ranges:
+            - 35.235.240.0/20
+          target_tags:
+            - allow-iap-ssh
+          ports:
+            - "22"
+      egress:
+        - name: allow-internet
+          destination_ranges:
+            - 0.0.0.0/0
+          ports:
+            - "80"
+            - "443"
+
+  router:
+    - name: cloud-router-mumbai
+      region: asia-south1
+      bgp:
+        asn: "65001"
+    - name: cloud-router-singapore
+      region: asia-southeast1
+      bgp:
+        asn: "65002"
+
+  nat:
+    - name: cloud-nat-mumbai
+      region: asia-south1
+      router_name: cloud-router-mumbai
+    - name: cloud-nat-singapore
+      region: asia-southeast1
+      router_name: cloud-router-singapore
 ```
 
-### 2. Reference the module in your root `main.tf`:
+### 2. Reference the module in your `main.tf`:
 
 ```hcl
 module "networking" {
-  source           = "./networking-infrastructure/vpc-subnet-router-nat-firewall"
+  source           = "git::https://github.com/yuva-cloud-devops/gcp-terraform-custom-modules.git//networking-infrastructure/vpc-subnet-router-nat-firewall?ref=main"
   config_file_path = "${path.module}/network-config.yaml"
 }
 
-# Access convenient lookup outputs for downstream resources
 output "vpc_id" {
-  value = module.networking.vpc_ids["prod-vpc"]
+  value = module.networking.vpc_ids["platform-foundation-vpc"]
 }
 
-output "subnet_id" {
-  value = module.networking.subnet_ids["prod-vpc/prod-apps"]
+output "mumbai_subnet_id" {
+  value = module.networking.subnet_ids["private-subnet-mumbai"]
 }
 ```
 
 ---
 
-## Development & Contribution Guidelines
+## Prerequisites
 
-When contributing new modules or modifying existing ones:
-
-1. **Format Code**:
-   Always format all Terraform files before committing:
-   ```bash
-   terraform fmt -recursive
-   ```
-
-2. **Validate Syntax**:
-   Ensure configuration files validate cleanly:
-   ```bash
-   terraform validate
-   ```
-
-3. **Documentation**:
-   - Keep module-level `README.md` files updated with requirements, inputs, outputs, and example configurations.
-   - Use descriptive resource names and structured comments.
-
-4. **Git Hygiene**:
-   - Local test directories, `.tfstate`, and `examples/` are excluded by `.gitignore`. Do not commit credentials, test state files, or cached provider binaries.
+1. **Terraform CLI**: Version `>= 1.5.0`
+2. **Google Cloud SDK (`gcloud`)**: Installed and authenticated (`gcloud auth application-default login`)
+3. **Required GCP APIs Enabled**:
+   - `compute.googleapis.com`
+   - `servicenetworking.googleapis.com` (required when Private Service Access is enabled)

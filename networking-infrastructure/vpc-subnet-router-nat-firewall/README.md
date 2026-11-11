@@ -1,13 +1,9 @@
-# GCP Multi-VPC, Subnetworks, Cloud Router, Cloud NAT & Firewall Terraform Module
+# GCP VPC, Subnetworks, Cloud Router (BGP), Cloud NAT, Firewall & Private Service Access Module
 
-A production-grade, declarative Terraform module for Google Cloud Platform (GCP) that provisions multi-VPC network architectures completely driven by a structured YAML configuration file.
-
-This module automates the end-to-end lifecycle of:
-- **VPC Networks** (Custom subnet mode, Global/Regional routing, default route management)
-- **Subnetworks** (Primary IP CIDR ranges, Private Google Access, and Secondary IP ranges for GKE Pods & Services)
-- **Cloud Routers** (Dedicated or shared per VPC and region)
-- **Cloud NAT Gateways** (Auto-allocated egress IPs and configurable logging)
-- **Firewall Rules** (Dynamic `INGRESS` and `EGRESS` rules with granular `allow` and `deny` rules)
+A production-grade, YAML-driven Terraform module for Google Cloud Platform (GCP) modeled after the official Google Cloud Terraform modules:
+- [`terraform-google-modules/network/google`](https://registry.terraform.io/modules/terraform-google-modules/network/google/latest) (VPC, Subnets, Secondary Ranges, Flow Logs, Firewall Rules, Private Service Access)
+- [`terraform-google-modules/cloud-router/google`](https://registry.terraform.io/modules/terraform-google-modules/cloud-router/google/latest) (Cloud Router with detailed BGP configuration, custom route advertisements, interfaces, and BGP peers)
+- [`terraform-google-modules/cloud-nat/google`](https://registry.terraform.io/modules/terraform-google-modules/cloud-nat/google/latest) (Cloud NAT with port allocation, timeouts, custom subnetwork mapping, and logging)
 
 ---
 
@@ -15,30 +11,41 @@ This module automates the end-to-end lifecycle of:
 
 ```mermaid
 flowchart TD
-    YAML["network-config.yaml<br/>(Multi-VPC Configuration)"] --> Module["Terraform Module<br/>(0-locals.tf Parsing)"]
-    
-    subgraph VPC_Layer ["VPC Networks Layer"]
-        Module --> VPC1["google_compute_network<br/>(core-workload-vpc)"]
-        Module --> VPC2["google_compute_network<br/>(mgmt-dmz-vpc)"]
-    end
+    YAML["network-config.yaml<br/>(Declarative YAML Configuration)"] --> Locals["0-locals.tf<br/>(Configuration Parser & Normalizer)"]
 
-    subgraph Subnet_Layer ["Subnetworks & Secondary Ranges"]
-        VPC1 --> S1["Subnet: core-apps<br/>(Primary + GKE Pods & Services)"]
-        VPC1 --> S2["Subnet: core-db"]
-        VPC2 --> S3["Subnet: mgmt-tools"]
-    end
-
-    subgraph NAT_Routing_Layer ["Routing & Cloud NAT (Egress)"]
-        VPC1 --> R1["Cloud Router<br/>(us-central1)"] --> N1["Cloud NAT<br/>(Auto IP)"]
-        VPC2 --> R2["Cloud Router<br/>(us-east4)"] --> N2["Cloud NAT<br/>(Auto IP)"]
-    end
-
-    subgraph Security_Layer ["Security & Firewall Rules"]
-        VPC1 --> FW1["Allow Internal Traffic"]
-        VPC2 --> FW2["Allow IAP SSH"]
-        VPC2 --> FW3["Deny Insecure Egress"]
-    end
+    Locals --> VPC["1-vpc.tf<br/>google_compute_network"]
+    VPC --> Subnets["2-subnetworks.tf<br/>google_compute_subnetwork<br/>(Primary + Secondary Ranges + Flow Logs)"]
+    VPC --> Router["3-cloud-router.tf<br/>google_compute_router<br/>(Detailed BGP, Interfaces & Peers)"]
+    Router --> NAT["4-cloud-nat.tf<br/>google_compute_router_nat<br/>(Port Allocation, Timeouts & Logging)"]
+    VPC --> FW["5-firewall.tf<br/>google_compute_firewall<br/>(Ingress & Egress Rules)"]
+    VPC --> PSA["6-private-service-access.tf<br/>google_compute_global_address &<br/>google_service_networking_connection"]
 ```
+
+---
+
+## Key Features
+
+1. **VPC Network (`1-vpc.tf`)**:
+   - Custom mode VPC (`auto_create_subnetworks = false` by default).
+   - Configurable `routing_mode` (`GLOBAL` or `REGIONAL`), `mtu`, IPv6 ULA support, default internet gateway route deletion, and firewall policy enforcement order.
+2. **Subnetworks (`2-subnetworks.tf`)**:
+   - Multi-region subnet creation (`subnet_name`, `subnet_ip`, `subnet_region`, `subnet_private_access`).
+   - Secondary IP ranges (`secondary_ranges`) for GKE Pods and Services.
+   - VPC Flow Logs (`subnet_flow_logs`) with configurable interval, sampling, metadata, and filter expressions.
+3. **Cloud Router & Detailed BGP (`3-cloud-router.tf`)**:
+   - Dedicated regional Cloud Routers with full BGP support (`asn`, `advertise_mode`, `advertised_groups`, `advertised_ip_ranges`, `keepalive_interval`, `identifier_range`).
+   - Optional Router Interfaces (`google_compute_router_interface`) and BGP Peers (`google_compute_router_peer`) with BFD support.
+4. **Cloud NAT (`4-cloud-nat.tf`)**:
+   - Auto or manual IP allocation (`AUTO_ONLY` / `MANUAL_ONLY`).
+   - Static or dynamic port allocation (`min_ports_per_vm`, `max_ports_per_vm`, `enable_dynamic_port_allocation`).
+   - Configurable TCP/UDP/ICMP idle timeouts and NAT logging (`ERRORS_ONLY`, `TRANSLATIONS_ONLY`, `ALL`).
+5. **Firewall Rules (`5-firewall.tf`)**:
+   - Clean `ingress` and `egress` grouping in YAML.
+   - Supports simple `ports` shorthand (defaults to TCP) as well as multi-protocol `allow` and `deny` blocks, `source_ranges`, `destination_ranges`, `source_tags`, `target_tags`, service accounts, and rule logging.
+6. **Private Service Access (`6-private-service-access.tf`)**:
+   - Reserves internal IP address ranges (`google_compute_global_address`) for `VPC_PEERING`.
+   - Establishes private connection (`google_service_networking_connection`) to `servicenetworking.googleapis.com` for Cloud SQL, Memorystore, Filestore, and Vertex AI.
+   - Optional custom route import/export (`google_compute_network_peering_routes_config`).
 
 ---
 
@@ -53,170 +60,168 @@ flowchart TD
 
 ## Inputs
 
-| Name | Description | Type | Default | Required |
-|------|-------------|------|---------|:--------:|
-| <a name="input_config_file_path"></a> [config\_file\_path](#input\_config\_file\_path) | Absolute or relative path to the multi-network YAML configuration file. | `string` | n/a | yes |
+| Name | Description | Type | Required |
+|------|-------------|------|:--------:|
+| `config_file_path` | Path to the YAML network configuration file. | `string` | yes |
 
 ---
 
 ## Outputs
 
-| Name | Description | Downstream Use Cases |
-|------|-------------|----------------------|
-| <a name="output_vpcs"></a> [vpcs](#output\_vpcs) | Map of created VPCs with `id`, `name`, `self_link`, `gateway_ipv4`, `routing_mode`, and `delete_default_routes_on_create`. | Full VPC metadata inspection |
-| <a name="output_vpc_ids"></a> [vpc\_ids](#output\_vpc\_ids) | Map of `{ "<vpc_name>" = "<vpc_id>" }`. | Peering, Shared VPC attachments, interconnects |
-| <a name="output_vpc_self_links"></a> [vpc\_self\_links](#output\_vpc\_self\_links) | Map of `{ "<vpc_name>" = "<self_link>" }`. | Referencing VPC in compute instances & load balancers |
-| <a name="output_subnets"></a> [subnets](#output\_subnets) | Map of created subnets keyed by `"<vpc_name>/<subnet_name>"` with full details, gateway IP, and secondary ranges. | Detailed subnet inspection & auditing |
-| <a name="output_subnet_ids"></a> [subnet\_ids](#output\_subnet\_ids) | Map of `{ "<vpc_name>/<subnet_name>" = "<subnet_id>" }`. | Attaching GKE clusters, VM NICs, Cloud Run VPC connectors |
-| <a name="output_subnet_self_links"></a> [subnet\_self\_links](#output\_subnet\_self\_links) | Map of `{ "<vpc_name>/<subnet_name>" = "<subnet_self_link>" }`. | Direct compute resource attachment |
-| <a name="output_subnet_cidrs"></a> [subnet\_cidrs](#output\_subnet\_cidrs) | Map of `{ "<vpc_name>/<subnet_name>" = "<ip_cidr_range>" }`. | Security group definitions, route tables |
-| <a name="output_routers"></a> [routers](#output\_routers) | Map of Cloud Routers keyed by `"<vpc_name>/<nat_name>"`. | Cloud Interconnect, BGP sessions, VPN tunnels |
-| <a name="output_router_ids"></a> [router\_ids](#output\_router\_ids) | Map of `{ "<vpc_name>/<nat_name>" = "<router_id>" }`. | BGP and VPN attachments |
-| <a name="output_router_self_links"></a> [router\_self\_links](#output\_router\_self\_links) | Map of `{ "<vpc_name>/<nat_name>" = "<router_self_link>" }`. | Router references |
-| <a name="output_nat_gateways"></a> [nat\_gateways](#output\_nat\_gateways) | Map of Cloud NAT gateways with router reference, allocated NAT IPs, and config. | Egress IP auditing & allowlisting |
-| <a name="output_nat_ids"></a> [nat\_ids](#output\_nat\_ids) | Map of `{ "<vpc_name>/<nat_name>" = "<nat_id>" }`. | NAT resource verification |
-| <a name="output_firewall_rules"></a> [firewall\_rules](#output\_firewall\_rules) | Map of created firewall rules keyed by `"<vpc_name>/<rule_name>"`. | Security auditing and compliance checks |
-| <a name="output_firewall_rule_ids"></a> [firewall\_rule\_ids](#output\_firewall\_rule\_ids) | Map of `{ "<vpc_name>/<rule_name>" = "<firewall_id>" }`. | Policy linkage |
-| <a name="output_firewall_rule_self_links"></a> [firewall\_rule\_self\_links](#output\_firewall\_rule\_self\_links) | Map of `{ "<vpc_name>/<rule_name>" = "<firewall_self_link>" }`. | Firewall references |
+| Name | Description |
+|------|-------------|
+| `project_id` | The GCP project ID where networking resources are provisioned. |
+| `tags` | Common metadata tags/labels defined in the YAML configuration. |
+| `vpcs` | Detailed map of created VPC networks (`id`, `name`, `self_link`, `gateway_ipv4`, `routing_mode`, `mtu`). |
+| `vpc_ids` | Lookup map of VPC name to VPC ID. |
+| `vpc_self_links` | Lookup map of VPC name to VPC self link. |
+| `subnets` | Detailed map of created subnetworks including `secondary_ranges_map` for GKE. |
+| `subnet_ids` | Lookup map of subnet name to subnet ID. |
+| `subnet_self_links` | Lookup map of subnet name to subnet self link. |
+| `subnet_cidrs` | Lookup map of subnet name to primary IP CIDR block. |
+| `routers` | Detailed map of created Cloud Routers including `bgp` configuration. |
+| `router_ids` | Lookup map of Cloud Router name to Router ID. |
+| `router_self_links` | Lookup map of Cloud Router name to Router self link. |
+| `router_bgp_peers` | Detailed map of created Cloud Router BGP peers. |
+| `nat_gateways` | Detailed map of created Cloud NAT gateways. |
+| `nat_ids` | Lookup map of Cloud NAT name to Cloud NAT ID. |
+| `firewall_rules` | Detailed map of created Firewall Rules. |
+| `firewall_rule_ids` | Lookup map of firewall rule name to Firewall ID. |
+| `firewall_rule_self_links` | Lookup map of firewall rule name to Firewall self link. |
+| `private_service_access_ranges` | Map of allocated internal IP ranges for Private Service Access (`id`, `address`, `prefix_length`, `cidr`). |
+| `private_service_access_connections` | Details of the Private Service Access service networking peering connections. |
 
 ---
 
-## YAML Configuration Specification
-
-The module expects a single YAML file containing top-level `project_id` and a `vpcs` list.
-
-### Schema Breakdown
+## YAML Configuration Reference (`network-config.yaml`)
 
 ```yaml
-project_id: "your-gcp-project-id"   # Target GCP Project ID
+project_id: yuvaraj-internal-project
+region: asia-south1
 
-vpcs:
-  - name: "vpc-name"                # VPC Network name (required)
-    routing_mode: "GLOBAL"          # Routing mode: "GLOBAL" or "REGIONAL" (default: "GLOBAL")
-    description: "VPC description"  # Optional description
-    delete_default_routes_on_create: false # Set true to enforce custom default routes (default: false)
+tags:
+  provisioned_by: terraform
+  environment: dev
+  project: gcp-platform-foundation-terraform
 
+network:
+  vpc:
+    # VPC Configuration
+    network_name: platform-foundation-vpc
+    routing_mode: GLOBAL
+    description: "Platform Foundation VPC"
+    delete_default_internet_gateway_routes: false
+
+    # Private Service Access (for Cloud SQL, Memorystore, etc.)
+    private_service_access:
+      enabled: true
+      name: google-managed-services-psa
+      # address: 10.100.0.0       # Optional: auto-allocated by GCP if omitted
+      prefix_length: 16
+      export_custom_routes: true
+      import_custom_routes: true
+
+    # Subnet Configuration
     subnets:
-      - name: "subnet-name"         # Subnet name (required)
-        ip_cidr: "10.10.1.0/24"     # Primary CIDR block (required)
-        region: "us-central1"       # GCP Region (required)
-        private_access: true        # Enable Private Google Access (default: true)
-        description: "Subnet info"  # Optional description
-        secondary_ranges:           # Optional secondary ranges (e.g., for GKE)
-          - name: "gke-pods"
-            ip_cidr: "10.20.0.0/16"
-          - name: "gke-services"
-            ip_cidr: "10.30.0.0/20"
-
-    nats:
-      - name: "nat-gateway-name"    # NAT gateway name (required)
-        region: "us-central1"       # NAT region (required)
-        router_name: "custom-router"# Optional router name (default: "<vpc_name>-<region>-router")
-        log_filter: "ERRORS_ONLY"   # Logging: "ERRORS_ONLY", "TRANSLATIONS_ONLY", "ALL", or null
-
-    firewall_rules:
-      - name: "rule-name"           # Rule name suffix, prefixed with "<vpc_name>-" (required)
-        direction: "INGRESS"        # "INGRESS" or "EGRESS" (default: "INGRESS")
-        priority: 1000              # Priority integer 0-65535 (default: 1000)
-        description: "Rule info"    # Optional description
-        source_ranges:              # CIDR ranges for INGRESS
-          - "10.10.0.0/16"
-        destination_ranges:         # CIDR ranges for EGRESS
-          - "0.0.0.0/0"
-        source_tags:                # Source network tags
-          - "bastion"
-        target_tags:                # Target network tags
-          - "web-server"
-        allows:                     # Dynamic ALLOW blocks
-          - protocol: "tcp"
-            ports: ["80", "443"]
-          - protocol: "icmp"
-        denies:                     # Dynamic DENY blocks
-          - protocol: "tcp"
-            ports: ["23", "25"]
-```
-
----
-
-## Usage Example
-
-### 1. Define the YAML configuration (`network-config.yaml`)
-
-```yaml
-project_id: "my-production-project"
-
-vpcs:
-  - name: "prod-vpc"
-    routing_mode: "GLOBAL"
-    description: "Production Workload VPC"
-    delete_default_routes_on_create: false
-
-    subnets:
-      - name: "prod-gke-us-central1"
-        ip_cidr: "10.100.0.0/20"
-        region: "us-central1"
-        private_access: true
+      - subnet_name: private-subnet-mumbai
+        subnet_ip: 10.20.1.0/24
+        subnet_region: asia-south1
+        subnet_private_access: true
+        subnet_flow_logs: false
         secondary_ranges:
-          - name: "pods"
-            ip_cidr: "172.16.0.0/16"
-          - name: "services"
-            ip_cidr: "172.17.0.0/20"
+          - range_name: gke-pods
+            ip_cidr_range: 10.200.0.0/16
+          - range_name: gke-services
+            ip_cidr_range: 10.201.0.0/20
 
-    nats:
-      - name: "prod-nat-us-central1"
-        region: "us-central1"
-        log_filter: "ERRORS_ONLY"
+      - subnet_name: private-subnet-singapore
+        subnet_ip: 10.30.1.0/24
+        subnet_region: asia-southeast1
+        subnet_private_access: true
 
+    # Firewall Rules
     firewall_rules:
-      - name: "allow-internal"
-        direction: "INGRESS"
-        priority: 1000
-        source_ranges: ["10.100.0.0/16"]
-        allows:
-          - protocol: "all"
+      ingress:
+        - name: allow-iap-ssh
+          source_ranges:
+            - 35.235.240.0/20
+          target_tags:
+            - allow-iap-ssh
+          ports:
+            - "22"
 
-      - name: "allow-iap-ssh"
-        direction: "INGRESS"
-        priority: 1000
-        source_ranges: ["35.235.240.0/20"]
-        target_tags: ["ssh-iap"]
-        allows:
-          - protocol: "tcp"
-            ports: ["22"]
+        - name: allow-health-check
+          source_ranges:
+            - 130.211.0.0/22
+            - 35.191.0.0/16
+          target_tags:
+            - allow-health-check
+          ports:
+            - "8080"
+
+        - name: allow-load-balancer
+          source_ranges:
+            - 130.211.0.0/22
+            - 35.191.0.0/16
+          target_tags:
+            - allow-web
+          ports:
+            - "80"
+            - "443"
+            - "8080"
+
+      egress:
+        - name: allow-internet
+          destination_ranges:
+            - 0.0.0.0/0
+          ports:
+            - "80"
+            - "443"
+
+  # Cloud Routers (with BGP Configuration)
+  router:
+    - name: cloud-router-mumbai
+      region: asia-south1
+      bgp:
+        asn: "65001"
+        advertise_mode: DEFAULT
+        keepalive_interval: 20
+
+    - name: cloud-router-singapore
+      region: asia-southeast1
+      bgp:
+        asn: "65002"
+        advertise_mode: CUSTOM
+        advertised_groups:
+          - ALL_SUBNETS
+        advertised_ip_ranges:
+          - range: 10.30.1.0/24
+            description: "Singapore Primary Subnet"
+
+  # Cloud NATs
+  nat:
+    - name: cloud-nat-mumbai
+      region: asia-south1
+      router_name: cloud-router-mumbai
+      min_ports_per_vm: 64
+      enable_logging: true
+      log_filter: ERRORS_ONLY
+
+    - name: cloud-nat-singapore
+      region: asia-southeast1
+      router_name: cloud-router-singapore
+      min_ports_per_vm: 64
+      enable_logging: true
+      log_filter: ERRORS_ONLY
 ```
 
-### 2. Invoke the Module (`main.tf`)
+---
+
+## Module Usage (`main.tf`)
 
 ```hcl
 module "networking" {
-  source           = "git::https://github.com/your-org/gcp-terraform-custom-modules.git//networking-infrastructure/vpc-subnet-router-nat-firewall?ref=v1.0.0"
+  source           = "git::https://github.com/yuva-cloud-devops/gcp-terraform-custom-modules.git//networking-infrastructure/vpc-subnet-router-nat-firewall?ref=main"
   config_file_path = "${path.module}/network-config.yaml"
 }
-
-# Example: Consume the output for a GKE cluster
-resource "google_container_cluster" "primary" {
-  name     = "prod-cluster"
-  location = "us-central1"
-
-  network    = module.networking.vpc_ids["prod-vpc"]
-  subnetwork = module.networking.subnet_ids["prod-vpc/prod-gke-us-central1"]
-
-  ip_allocation_policy {
-    cluster_secondary_range_name  = "pods"
-    services_secondary_range_name = "services"
-  }
-}
 ```
-
----
-
-## Key Design Patterns & Benefits
-
-1. **Decoupled Configuration & Code**:
-   Network topologies, CIDR blocks, and firewall policies are maintained in readable YAML files, enabling clear reviews without touching HCL code.
-2. **Deterministic Composite Keys**:
-   All subnets, routers, NATs, and firewall rules are keyed by composite identifiers (`<vpc_name>/<subnet_name>`, `<vpc_name>/<nat_name>`, `<vpc_name>/<rule_name>`), preventing resource key collisions across multi-VPC deployments.
-3. **Turnkey GKE Ready**:
-   Subnet outputs expose `secondary_ranges_map` for fast configuration in Kubernetes modules.
-4. **Dynamic Firewall Declarations**:
-   Rules seamlessly support any combination of `allows` and `denies` with port lists or whole-protocol definitions.

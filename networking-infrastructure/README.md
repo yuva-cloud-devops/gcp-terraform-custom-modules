@@ -1,24 +1,23 @@
 # Networking Infrastructure Modules for GCP
 
-This directory contains reusable, production-ready Terraform modules for provisioning core Google Cloud Platform (GCP) networking infrastructure.
-
-The networking layer serves as the foundation for all workloads across Google Cloud (Compute Engine, Google Kubernetes Engine, Cloud Run, Cloud SQL, and private interconnects).
+This directory contains reusable, production-ready Terraform modules for provisioning core Google Cloud Platform (GCP) networking infrastructure, modeled on the official Google Cloud Terraform modules:
+- [`terraform-google-modules/network/google`](https://registry.terraform.io/modules/terraform-google-modules/network/google/latest)
+- [`terraform-google-modules/cloud-router/google`](https://registry.terraform.io/modules/terraform-google-modules/cloud-router/google/latest)
+- [`terraform-google-modules/cloud-nat/google`](https://registry.terraform.io/modules/terraform-google-modules/cloud-nat/google/latest)
 
 ---
 
 ## Design Principles
 
 1. **Infrastructure as Data**:
-   Network topologies, CIDR allocation, egress NAT policies, and firewall rules are declared through structured YAML configurations, separating environment definitions from Terraform logic.
+   Network topologies, CIDR allocation, BGP routing, egress NAT policies, Private Service Access ranges, and firewall rules are declared through structured YAML configurations.
 2. **Security by Default**:
-   - `auto_create_subnetworks` is strictly disabled (`false`) on all VPCs.
-   - Private Google Access is enabled by default across all subnets to prevent compute instances from needing external public IPs to communicate with GCP APIs.
-   - Cloud NAT provides secure egress for instances in private subnets.
-   - Firewall rules default to least-privilege principles.
-3. **Multi-VPC & Multi-Tenant Support**:
-   Modules are engineered to handle multi-VPC topologies (e.g., Core Workloads, DMZ/Bastion, Shared VPC, Transit Hubs) in a single configuration without code duplication.
-4. **First-Class GKE Integration**:
-   Subnet modules natively support secondary CIDR ranges for GKE Pod and Service IP allocations.
+   - `auto_create_subnetworks` is strictly disabled (`false`).
+   - Private Google Access is enabled by default across all subnets.
+   - Cloud NAT provides controlled egress for private workloads.
+   - Private Service Access enables private connectivity to Cloud SQL, Memorystore, and Filestore without public IPs.
+3. **Enterprise BGP & Hybrid Ready**:
+   Cloud Routers support ASN configuration, custom BGP route advertisements, router interfaces, and BGP peers with BFD.
 
 ---
 
@@ -26,7 +25,7 @@ The networking layer serves as the foundation for all workloads across Google Cl
 
 | Module | Description | Status |
 |--------|-------------|:------:|
-| [`vpc-subnet-router-nat-firewall`](./vpc-subnet-router-nat-firewall/) | Multi-VPC, custom subnets with secondary ranges, Cloud Routers, Cloud NAT gateways, and dynamic firewall rules driven by YAML. | **Stable / Production** |
+| [`vpc-subnet-router-nat-firewall`](./vpc-subnet-router-nat-firewall/) | End-to-end VPC, multi-region subnets, Cloud Routers with BGP, Cloud NAT gateways, Ingress/Egress Firewalls, and Private Service Access driven by YAML. | **Stable / Production** |
 
 ---
 
@@ -36,12 +35,13 @@ The networking layer serves as the foundation for all workloads across Google Cl
 networking-infrastructure/
 ├── README.md                                 # Domain documentation (this file)
 └── vpc-subnet-router-nat-firewall/           # Core networking module
-    ├── 0-locals.tf                           # YAML configuration parser and key flattener
+    ├── 0-locals.tf                           # YAML configuration parser & normalizer
     ├── 1-vpc.tf                              # VPC network resources
-    ├── 2-subnetworks.tf                      # Subnets & secondary IP ranges
-    ├── 3-cloud-router.tf                     # Cloud Router resources
-    ├── 4-cloud-nat.tf                        # Cloud NAT gateway resources
-    ├── 5-firewall.tf                         # Dynamic firewall rules (allow/deny)
+    ├── 2-subnetworks.tf                      # Subnets, secondary IP ranges & VPC flow logs
+    ├── 3-cloud-router.tf                     # Cloud Routers, BGP config, interfaces & peers
+    ├── 4-cloud-nat.tf                        # Cloud NAT gateways, port allocation & logging
+    ├── 5-firewall.tf                         # Ingress & Egress firewall rules
+    ├── 6-private-service-access.tf           # Private Service Access (VPC Peering for Cloud SQL/Redis)
     ├── variables.tf                          # Input variables
     ├── outputs.tf                            # Comprehensive output definitions & lookup maps
     ├── versions.tf                           # Terraform and provider version constraints
@@ -52,38 +52,11 @@ networking-infrastructure/
 
 ## Quick Start
 
-### 1. Create a `network-config.yaml`
-
-```yaml
-project_id: "your-gcp-project-id"
-
-vpcs:
-  - name: "core-workload-vpc"
-    routing_mode: "GLOBAL"
-    subnets:
-      - name: "apps-subnet"
-        ip_cidr: "10.10.1.0/24"
-        region: "us-central1"
-        private_access: true
-    nats:
-      - name: "core-nat"
-        region: "us-central1"
-        log_filter: "ERRORS_ONLY"
-    firewall_rules:
-      - name: "allow-internal"
-        direction: "INGRESS"
-        source_ranges: ["10.10.0.0/16"]
-        allows:
-          - protocol: "all"
-```
-
-### 2. Invoke the module in your Terraform code
-
 ```hcl
 module "networking" {
-  source           = "./networking-infrastructure/vpc-subnet-router-nat-firewall"
+  source           = "git::https://github.com/yuva-cloud-devops/gcp-terraform-custom-modules.git//networking-infrastructure/vpc-subnet-router-nat-firewall?ref=main"
   config_file_path = "${path.module}/network-config.yaml"
 }
 ```
 
-For detailed usage, variable definitions, and output schemas, refer to the [vpc-subnet-router-nat-firewall README](./vpc-subnet-router-nat-firewall/README.md).
+For full YAML configuration details and output schemas, refer to the [vpc-subnet-router-nat-firewall README](./vpc-subnet-router-nat-firewall/README.md).
