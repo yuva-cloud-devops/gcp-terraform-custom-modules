@@ -105,114 +105,174 @@ tags:
   project: gcp-platform-foundation-terraform
 
 network:
-  vpc:
-    # VPC Configuration
-    network_name: platform-foundation-vpc
-    routing_mode: GLOBAL
-    description: "Platform Foundation VPC"
-    delete_default_internet_gateway_routes: false
+  vpcs:
+    # ==========================================================================
+    # VPC 1: Platform Foundation VPC
+    # ==========================================================================
+    - network_name: platform-foundation-vpc
+      routing_mode: GLOBAL
+      description: "Platform Foundation VPC"
+      delete_default_internet_gateway_routes: false
 
-    # Private Service Access (for Cloud SQL, Memorystore, etc.)
-    private_service_access:
-      enabled: true
-      name: google-managed-services-psa
-      # address: 10.100.0.0       # Optional: auto-allocated by GCP if omitted
-      prefix_length: 16
-      export_custom_routes: true
-      import_custom_routes: true
+      # Private Service Access (for Cloud SQL, Memorystore, etc.)
+      private_service_access:
+        enabled: true
+        name: platform-foundation-psa-range
+        prefix_length: 16
+        export_custom_routes: true
+        import_custom_routes: true
 
-    # Subnet Configuration
-    subnets:
-      - subnet_name: private-subnet-mumbai
-        subnet_ip: 10.20.1.0/24
-        subnet_region: asia-south1
-        subnet_private_access: true
-        subnet_flow_logs: false
-        secondary_ranges:
-          - range_name: gke-pods
-            ip_cidr_range: 10.200.0.0/16
-          - range_name: gke-services
-            ip_cidr_range: 10.201.0.0/20
+      # Subnet Configuration
+      subnets:
+        - subnet_name: private-subnet-mumbai
+          subnet_ip: 10.20.1.0/24
+          subnet_region: asia-south1
+          subnet_private_access: true
+          subnet_flow_logs: false
+          secondary_ranges:
+            - range_name: gke-pods
+              ip_cidr_range: 10.200.0.0/16
+            - range_name: gke-services
+              ip_cidr_range: 10.201.0.0/20
 
-      - subnet_name: private-subnet-singapore
-        subnet_ip: 10.30.1.0/24
-        subnet_region: asia-southeast1
-        subnet_private_access: true
+        - subnet_name: private-subnet-singapore
+          subnet_ip: 10.30.1.0/24
+          subnet_region: asia-southeast1
+          subnet_private_access: true
 
-    # Firewall Rules
-    firewall_rules:
-      ingress:
-        - name: allow-iap-ssh
-          source_ranges:
-            - 35.235.240.0/20
-          target_tags:
-            - allow-iap-ssh
-          ports:
-            - "22"
+      # Firewall Rules
+      firewall_rules:
+        ingress:
+          - name: allow-iap-ssh
+            source_ranges:
+              - 35.235.240.0/20
+            target_tags:
+              - allow-iap-ssh
+            ports:
+              - "22"
 
-        - name: allow-health-check
-          source_ranges:
-            - 130.211.0.0/22
-            - 35.191.0.0/16
-          target_tags:
-            - allow-health-check
-          ports:
-            - "8080"
+          - name: allow-health-check
+            source_ranges:
+              - 130.211.0.0/22
+              - 35.191.0.0/16
+            target_tags:
+              - allow-health-check
+            ports:
+              - "8080"
 
-        - name: allow-load-balancer
-          source_ranges:
-            - 130.211.0.0/22
-            - 35.191.0.0/16
-          target_tags:
-            - allow-web
-          ports:
-            - "80"
-            - "443"
-            - "8080"
+          - name: allow-load-balancer
+            source_ranges:
+              - 130.211.0.0/22
+              - 35.191.0.0/16
+            target_tags:
+              - allow-web
+            ports:
+              - "80"
+              - "443"
+              - "8080"
 
-      egress:
-        - name: allow-internet
-          destination_ranges:
-            - 0.0.0.0/0
-          ports:
-            - "80"
-            - "443"
+        egress:
+          - name: allow-internet
+            destination_ranges:
+              - 0.0.0.0/0
+            ports:
+              - "80"
+              - "443"
 
-  # Cloud Routers (with BGP Configuration)
-  router:
-    - name: cloud-router-mumbai
-      region: asia-south1
-      bgp:
-        asn: "65001"
-        advertise_mode: DEFAULT
-        keepalive_interval: 20
+      # Cloud Routers (with BGP Configuration)
+      router:
+        - name: cloud-router-mumbai
+          region: asia-south1
+          bgp:
+            asn: "65001"
+            advertise_mode: DEFAULT
+            keepalive_interval: 20
 
-    - name: cloud-router-singapore
-      region: asia-southeast1
-      bgp:
-        asn: "65002"
-        advertise_mode: CUSTOM
-        advertised_groups:
-          - ALL_SUBNETS
-        advertised_ip_ranges:
-          - range: 10.30.1.0/24
-            description: "Singapore Primary Subnet"
+        - name: cloud-router-singapore
+          region: asia-southeast1
+          bgp:
+            asn: "65002"
+            advertise_mode: CUSTOM
+            advertised_groups:
+              - ALL_SUBNETS
+            advertised_ip_ranges:
+              - range: 10.30.1.0/24
+                description: "Singapore Primary Subnet"
 
-  # Cloud NATs
-  nat:
-    - name: cloud-nat-mumbai
-      region: asia-south1
-      router_name: cloud-router-mumbai
-      min_ports_per_vm: 64
-      enable_logging: true
-      log_filter: ERRORS_ONLY
+      # Cloud NATs
+      nat:
+        - name: cloud-nat-mumbai
+          region: asia-south1
+          router_name: cloud-router-mumbai
+          min_ports_per_vm: 64
+          enable_logging: true
+          log_filter: ERRORS_ONLY
 
-    - name: cloud-nat-singapore
-      region: asia-southeast1
-      router_name: cloud-router-singapore
-      min_ports_per_vm: 64
-      enable_logging: true
-      log_filter: ERRORS_ONLY
+        - name: cloud-nat-singapore
+          region: asia-southeast1
+          router_name: cloud-router-singapore
+          min_ports_per_vm: 64
+          enable_logging: true
+          log_filter: ERRORS_ONLY
+
+    # ==========================================================================
+    # VPC 2: Management & Security VPC
+    # ==========================================================================
+    - network_name: management-security-vpc
+      routing_mode: REGIONAL
+      description: "Management, Bastion & Shared Security Tools VPC"
+
+      private_service_access:
+        enabled: true
+        name: management-security-psa-range
+        prefix_length: 20
+
+      subnets:
+        - subnet_name: mgmt-subnet-mumbai
+          subnet_ip: 10.50.1.0/24
+          subnet_region: asia-south1
+          subnet_private_access: true
+
+        - subnet_name: mgmt-subnet-singapore
+          subnet_ip: 10.60.1.0/24
+          subnet_region: asia-southeast1
+          subnet_private_access: true
+
+      firewall_rules:
+        ingress:
+          - name: mgmt-allow-iap-ssh
+            source_ranges:
+              - 35.235.240.0/20
+            target_tags:
+              - mgmt-bastion
+            ports:
+              - "22"
+
+        egress:
+          - name: mgmt-allow-internet
+            destination_ranges:
+              - 0.0.0.0/0
+            ports:
+              - "80"
+              - "443"
+
+      router:
+        - name: mgmt-router-mumbai
+          region: asia-south1
+          bgp:
+            asn: "65011"
+        - name: mgmt-router-singapore
+          region: asia-southeast1
+          bgp:
+            asn: "65012"
+
+      nat:
+        - name: mgmt-nat-mumbai
+          region: asia-south1
+          router_name: mgmt-router-mumbai
+        - name: mgmt-nat-singapore
+          region: asia-southeast1
+          router_name: mgmt-router-singapore
 ```
 
 ---

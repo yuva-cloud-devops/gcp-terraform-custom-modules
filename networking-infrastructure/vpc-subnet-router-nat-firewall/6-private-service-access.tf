@@ -19,10 +19,13 @@ resource "google_compute_global_address" "psa_ranges" {
 resource "google_service_networking_connection" "psa_connection" {
   for_each = local.psa_connection
 
-  network                 = google_compute_network.vpcs[each.value.vpc_name].id
-  service                 = each.value.service
-  reserved_peering_ranges = [for k, v in google_compute_global_address.psa_ranges : v.name]
-  deletion_policy         = each.value.deletion_policy
+  network = google_compute_network.vpcs[each.value.vpc_name].id
+  service = each.value.service
+  reserved_peering_ranges = [
+    for k, v in google_compute_global_address.psa_ranges : v.name
+    if local.psa_ranges[k].vpc_name == each.value.vpc_name
+  ]
+  deletion_policy = each.value.deletion_policy
 
   depends_on = [google_compute_global_address.psa_ranges]
 }
