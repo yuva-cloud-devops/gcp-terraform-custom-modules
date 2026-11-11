@@ -1,0 +1,50 @@
+# ==============================================================================
+# Terraform Ignore Rules
+# ==============================================================================
+
+# Local .terraform directories and cached provider binaries
+**/.terraform/
+.terraform/
+
+# Terraform state files
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+
+# Crash log files
+crash.log
+crash.*.log
+
+# Sensitive variable files
+*.tfvars
+*.tfvars.json
+
+# Local overrides
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# CLI configuration files
+.terraformrc
+terraform.rc
+
+# ==============================================================================
+# Examples Directory (Local runs, test state, and provider plugins)
+# ==============================================================================
+examples/
+**/examples/
+
+# ==============================================================================
+# OS & Editor Artifacts
+# ==============================================================================
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE & Editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
