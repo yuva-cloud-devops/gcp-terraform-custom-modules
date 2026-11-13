@@ -10,9 +10,17 @@ A collection of enterprise-grade, highly reusable, and production-tested Terrafo
 
 ## Design Principles
 
-- **Data-Driven Infrastructure**: Complex network topologies—including VPCs, multi-region subnets, Cloud Routers with BGP, Cloud NAT gateways, Private Service Access, and firewall policies—are declared via human-readable YAML configurations.
-- **Official Module Alignment**: Built following the architecture and feature sets of [`terraform-google-modules/network/google`](https://registry.terraform.io/modules/terraform-google-modules/network/google/latest), [`terraform-google-modules/cloud-router/google`](https://registry.terraform.io/modules/terraform-google-modules/cloud-router/google/latest), and [`terraform-google-modules/cloud-nat/google`](https://registry.terraform.io/modules/terraform-google-modules/cloud-nat/google/latest).
-- **Security by Default**: Private-only subnets, Private Google Access, Private Service Access for managed databases, Cloud NAT for controlled egress, and explicit least-privilege firewall rules.
+- **Data-Driven Infrastructure**: Complex cloud landing zones and network topologies—including resource hierarchies, Project Factory setups, VPCs, multi-region subnets, Cloud Routers with BGP, Cloud NAT gateways, Private Service Access, and firewall policies—are declared via human-readable YAML configurations.
+- **Official Module Alignment**: Built following the architecture and feature sets of official Google Cloud Terraform modules:
+  - Resource hierarchy & project factory best practices ([`terraform-google-modules/project-factory`](https://registry.terraform.io/modules/terraform-google-modules/project-factory/google/latest))
+  - Core networking ([`terraform-google-modules/network/google`](https://registry.terraform.io/modules/terraform-google-modules/network/google/latest))
+  - Cloud Router with BGP ([`terraform-google-modules/cloud-router/google`](https://registry.terraform.io/modules/terraform-google-modules/cloud-router/google/latest))
+  - Cloud NAT ([`terraform-google-modules/cloud-nat/google`](https://registry.terraform.io/modules/terraform-google-modules/cloud-nat/google/latest))
+- **Security by Default**:
+  - Non-authoritative IAM member bindings (`google_*_iam_member`) to prevent accidental permission stripping.
+  - Automatic deprivileging of the default Compute Engine service account.
+  - Project deletion protection (`deletion_policy = "PREVENT"`).
+  - Private-only subnets, Private Google Access, Private Service Access for managed databases, Cloud NAT for controlled egress, and explicit least-privilege firewall rules.
 
 ---
 
@@ -20,6 +28,19 @@ A collection of enterprise-grade, highly reusable, and production-tested Terrafo
 
 ```
 gcp-terraform-custom-modules/
+├── foundation-infrastructure/                # Cloud Landing Zone & Hierarchy Factory
+│   ├── 0-locals.tf                           # YAML parser & schema flattening pipeline
+│   ├── 1-org-iam.tf                          # Organization-level IAM member bindings
+│   ├── 2-folders.tf                          # Top-level & nested sub-folder hierarchy
+│   ├── 3-projects.tf                         # Project Factory (Billing, prefix, random suffix)
+│   ├── 4-iam.tf                              # Folder IAM with CEL conditions & SA deprivileging
+│   ├── 5-apis.tf                             # Dynamic API enablement per project
+│   ├── 6-users-groups.tf                     # Project-level IAM with CEL conditions
+│   ├── 7-custom-service-accounts.tf          # Dedicated workload SAs & project role assignments
+│   ├── variables.tf                          # Configuration path variable
+│   ├── outputs.tf                            # Output maps for folders, projects, & service accounts
+│   ├── versions.tf                           # Provider and Terraform constraints
+│   └── README.md                             # Foundation module documentation
 ├── networking-infrastructure/                # Core networking domain
 │   ├── README.md                             # Networking overview & domain docs
 │   └── vpc-subnet-router-nat-firewall/       # VPC, subnets, BGP routers, NAT, firewalls & PSA
@@ -34,7 +55,10 @@ gcp-terraform-custom-modules/
 │       ├── outputs.tf
 │       ├── versions.tf
 │       └── README.md
-├── .gitignore                                # Git ignore rules (includes examples/ & state)
+├── examples/                                 # Reference implementations & sample setups
+│   ├── foundation/                           # Foundation module deployment example
+│   └── network/                              # Networking module deployment example
+├── .gitignore                                # Git ignore rules
 └── README.md                                 # Root repository documentation
 ```
 
@@ -42,17 +66,90 @@ gcp-terraform-custom-modules/
 
 ## Module Catalog
 
-### Networking Infrastructure
-
-| Module | Description | Directory |
-|---|---|---|
-| **VPC, Subnets, BGP Router, NAT, Firewall & PSA** | End-to-end VPC networking provisioned via YAML. Supports multi-region subnets, secondary ranges for GKE, VPC flow logs, Cloud Routers with detailed BGP configuration, Cloud NAT gateways, Private Service Access (`servicenetworking.googleapis.com`), and ingress/egress firewall rules. | [`networking-infrastructure/vpc-subnet-router-nat-firewall`](./networking-infrastructure/vpc-subnet-router-nat-firewall/) |
+| Domain | Module | Description | Directory |
+|---|---|---|---|
+| **Foundation** | **Resource Hierarchy & Project Factory** | Declarative GCP Landing Zone via YAML. Provisions multi-tier folder hierarchy, creates projects with billing attachment, enables APIs, assigns organization/folder/project IAM (with CEL conditions), creates custom workload service accounts, and strips default Compute Engine service account privileges. | [`foundation-infrastructure`](./foundation-infrastructure/) |
+| **Networking** | **VPC, Subnets, BGP Router, NAT, Firewall & PSA** | End-to-end VPC networking provisioned via YAML. Supports multi-region subnets, secondary ranges for GKE, VPC flow logs, Cloud Routers with detailed BGP configuration, Cloud NAT gateways, Private Service Access (`servicenetworking.googleapis.com`), and ingress/egress firewall rules. | [`networking-infrastructure/vpc-subnet-router-nat-firewall`](./networking-infrastructure/vpc-subnet-router-nat-firewall/) |
 
 ---
 
-## Quick Example: Using the Networking Module
+## Quick Examples
 
-### 1. Define your network specification in `network-config.yaml`:
+### Example 1: Foundation Infrastructure & Project Factory
+
+#### 1. Define your resource hierarchy in `hierarchy.yaml`:
+
+```yaml
+organization_id: "123456789012"
+billing_account_id: "012345-56789A-BCDEF0"
+
+# Organization IAM
+organization_iam:
+  - role: "roles/resourcemanager.organizationAdmin"
+    members:
+      - "group:gcp-org-admins@mycompany.com"
+
+# Multi-Tier Folders
+top_level_folders:
+  - name: "workloads"
+    iam:
+      - role: "roles/resourcemanager.folderViewer"
+        members: ["group:cloud-leads@mycompany.com"]
+
+sub_folders:
+  - name: "development"
+    parent: "workloads"
+    iam:
+      - role: "roles/viewer"
+        members: ["group:developers@mycompany.com"]
+
+# Projects (Project Factory)
+projects:
+  - name: "ecommerce-api"
+    prefix: "acme-dev"
+    target_folder: "development"
+    random_id: true
+    deprivilege_default_sa: true
+    apis:
+      - "compute.googleapis.com"
+      - "container.googleapis.com"
+      - "storage.googleapis.com"
+    labels:
+      environment: "dev"
+      cost_center: "engineering"
+    iam:
+      - role: "roles/viewer"
+        members: ["group:developers@mycompany.com"]
+    custom_service_accounts:
+      - account_id: "ecommerce-backend-sa"
+        display_name: "Ecommerce Backend Workload Identity"
+        roles:
+          - "roles/storage.objectUser"
+          - "roles/logging.logWriter"
+```
+
+#### 2. Reference the Foundation module in your `main.tf`:
+
+```hcl
+module "foundation" {
+  source           = "git::https://github.com/yuva-cloud-devops/gcp-terraform-custom-modules.git//foundation-infrastructure?ref=main"
+  yaml_config_path = "${path.module}/hierarchy.yaml"
+}
+
+output "folders" {
+  value = module.foundation.folders
+}
+
+output "projects" {
+  value = module.foundation.projects
+}
+```
+
+---
+
+### Example 2: Networking Infrastructure
+
+#### 1. Define your network specification in `network-config.yaml`:
 
 ```yaml
 project_id: yuvaraj-internal-project
@@ -119,7 +216,7 @@ network:
       router_name: cloud-router-singapore
 ```
 
-### 2. Reference the module in your `main.tf`:
+#### 2. Reference the Networking module in your `main.tf`:
 
 ```hcl
 module "networking" {
@@ -142,6 +239,19 @@ output "mumbai_subnet_id" {
 
 1. **Terraform CLI**: Version `>= 1.5.0`
 2. **Google Cloud SDK (`gcloud`)**: Installed and authenticated (`gcloud auth application-default login`)
-3. **Required GCP APIs Enabled**:
+3. **Required IAM Permissions**:
+   - **For Foundation**: `roles/resourcemanager.organizationAdmin`, `roles/resourcemanager.folderAdmin`, and `roles/billing.user` (or `roles/billing.admin`)
+   - **For Networking**: `roles/compute.networkAdmin`, `roles/compute.securityAdmin`, and `roles/servicenetworking.networksAdmin`
+4. **Required GCP APIs Enabled** (on administrative/seed project):
+   - `cloudresourcemanager.googleapis.com`
+   - `serviceusage.googleapis.com`
+   - `cloudbilling.googleapis.com`
+   - `iam.googleapis.com`
    - `compute.googleapis.com`
-   - `servicenetworking.googleapis.com` (required when Private Service Access is enabled)
+   - `servicenetworking.googleapis.com` (when Private Service Access is enabled)
+
+---
+
+## License
+
+This repository is distributed under the [MIT License](LICENSE).
