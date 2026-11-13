@@ -7,8 +7,7 @@
 # ==============================================================================
 
 resource "google_project_service" "apis" {
-  for_each = { for item in local.project_apis_flat : item.key => item }
-
+  for_each                   = { for item in local.project_apis_flat : item.key => item }
   project                    = google_project.projects[each.value.project_name].project_id
   service                    = each.value.api
   disable_on_destroy         = false

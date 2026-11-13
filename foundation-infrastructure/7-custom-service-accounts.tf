@@ -9,13 +9,11 @@
 # 7.1 Dedicated Workload Service Accounts Creation
 # ------------------------------------------------------------------------------
 resource "google_service_account" "sa" {
-  for_each = { for item in local.custom_sas_flat : item.key => item }
-
+  for_each     = { for item in local.custom_sas_flat : item.key => item }
   project      = google_project.projects[each.value.project_name].project_id
   account_id   = each.value.account_id
   display_name = each.value.display_name
-
-  depends_on = [google_project.projects]
+  depends_on   = [google_project.projects]
 }
 
 # ------------------------------------------------------------------------------
@@ -23,8 +21,7 @@ resource "google_service_account" "sa" {
 # ------------------------------------------------------------------------------
 resource "google_project_iam_member" "sa_roles" {
   for_each = { for item in local.custom_sa_roles_flat : item.key => item }
-
-  project = google_project.projects[each.value.project_name].project_id
-  role    = each.value.role
-  member  = "serviceAccount:${google_service_account.sa["${each.value.project_name}-${each.value.account_id}"].email}"
+  project  = google_project.projects[each.value.project_name].project_id
+  role     = each.value.role
+  member   = "serviceAccount:${google_service_account.sa["${each.value.project_name}-${each.value.account_id}"].email}"
 }

@@ -8,11 +8,9 @@
 
 resource "google_project_iam_member" "users" {
   for_each = { for item in local.project_iam_flat : item.key => item }
-
-  project = google_project.projects[each.value.project_name].project_id
-  role    = each.value.role
-  member  = each.value.member
-
+  project  = google_project.projects[each.value.project_name].project_id
+  role     = each.value.role
+  member   = each.value.member
   dynamic "condition" {
     for_each = each.value.condition != null ? [each.value.condition] : []
     content {

@@ -34,8 +34,8 @@ resource "google_folder_iam_member" "folders" {
 # Setting action = "DEPRIVILEGE" strips this overly permissive role to follow least privilege.
 resource "google_project_default_service_accounts" "deprivilege" {
   for_each = { for k, v in local.projects_map : k => v if lookup(v, "deprivilege_default_sa", true) }
-  project  = google_project.projects[each.key].project_id
-  action   = "DEPRIVILEGE"
 
+  project    = google_project.projects[each.key].project_id
+  action     = "DEPRIVILEGE"
   depends_on = [google_project_service.apis]
 }

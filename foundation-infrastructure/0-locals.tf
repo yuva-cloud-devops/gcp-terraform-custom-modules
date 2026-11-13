@@ -2,8 +2,9 @@
 # 0. Local Values & Data Transformation Pipeline
 # ==============================================================================
 # Parses the input YAML configuration file and flattens nested data structures
-# (Organization IAM, folder hierarchy, projects, APIs, IAM bindings, and custom
-# service accounts) into map/list collections suitable for Terraform 'for_each'.
+# (Organization IAM, folder hierarchy, cryptographic tags, projects, APIs, IAM
+# bindings, custom service accounts, and tag bindings) into map/list collections
+# suitable for Terraform 'for_each' iteration.
 # ==============================================================================
 
 locals {
@@ -25,7 +26,7 @@ locals {
   ])
 
   # ----------------------------------------------------------------------------
-  # Folder ID Lookup Map
+  # Folders Lookup Map
   # ----------------------------------------------------------------------------
   # Merges top-level and sub-folder resource references into a unified lookup map
   # (Folder Display Name => GCP Resource Name 'folders/{folder_id}')
@@ -53,6 +54,20 @@ locals {
           key         = "${f.name}-${binding.role}-${member}"
         }
       ]
+    ]
+  ])
+
+  # ----------------------------------------------------------------------------
+  # Resource Tag Values (Organization Level)
+  # ----------------------------------------------------------------------------
+  # Flattens tag keys and their allowed values for organization tag management
+  tag_values_flat = flatten([
+    for t in lookup(local.config, "tags", []) : [
+      for val in t.values : {
+        tag_key = t.key
+        value   = val
+        key     = "${t.key}/${val}"
+      }
     ]
   ])
 
@@ -124,16 +139,18 @@ locals {
       }
     ]
   ])
-}
 
-# ==============================================================================
-# Project Unique ID Suffix Generator
-# ==============================================================================
-# Generates a pseudo-random 4-character lowercase alphanumeric string per project
-# to ensure global uniqueness of GCP Project IDs when 'random_id' is enabled (default: true).
-resource "random_string" "project_suffix" {
-  for_each = { for k, v in local.projects_map : k => v if lookup(v, "random_id", true) }
-  length   = 4
-  special  = false
-  upper    = false
+  # ----------------------------------------------------------------------------
+  # Project Cryptographic Tag Bindings
+  # ----------------------------------------------------------------------------
+  # Flattens tag bindings assigned to projects for ABAC and governance policies
+  project_tag_bindings_flat = flatten([
+    for proj_name, p in local.projects_map : [
+      for tag_str in lookup(p, "tag_bindings", []) : {
+        project_name = proj_name
+        tag_key_val  = tag_str
+        key          = "${proj_name}-${tag_str}"
+      }
+    ]
+  ])
 }

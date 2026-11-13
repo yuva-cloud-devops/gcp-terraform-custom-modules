@@ -1,0 +1,133 @@
+organization_id: "123456789012"
+billing_account_id: "012345-56789A-BCDEF0"
+
+# ------------------------------------------------------------------------------
+# 1. ESSENTIAL CONTACTS (Google incident, security, and billing alerts)
+# ------------------------------------------------------------------------------
+essential_contacts:
+  - email: "cloud-security@mycompany.com"
+    notification_categories: ["SECURITY", "TECHNICAL"]
+    language_tag: "en-US"
+  - email: "finops-leads@mycompany.com"
+    notification_categories: ["BILLING"]
+    language_tag: "en-US"
+
+# ------------------------------------------------------------------------------
+# 2. GCP RESOURCE TAGS (Cryptographic tags for ABAC & Org Policies)
+# ------------------------------------------------------------------------------
+tags:
+  - key: "environment"
+    description: "Deployment lifecycle stage"
+    values: ["dev", "staging", "prod"]
+  - key: "data_classification"
+    description: "Data sensitivity classification"
+    values: ["public", "internal", "restricted"]
+
+# ------------------------------------------------------------------------------
+# 3. ROOT ORGANIZATION IAM
+# ------------------------------------------------------------------------------
+organization_iam:
+  - role: "roles/resourcemanager.organizationAdmin"
+    members:
+      - "group:gcp-org-admins@mycompany.com"
+  - role: "roles/billing.admin"
+    members:
+      - "group:finops-leads@mycompany.com"
+  - role: "roles/securityReviewer"
+    members:
+      - "group:secops-auditors@mycompany.com"
+
+# ------------------------------------------------------------------------------
+# 4. TOP-LEVEL FOLDERS (Parent: Organization)
+# ------------------------------------------------------------------------------
+top_level_folders:
+  - name: "core"
+    iam:
+      - role: "roles/resourcemanager.folderViewer"
+        members: ["group:secops-auditors@mycompany.com"]
+  - name: "workloads"
+    iam:
+      - role: "roles/resourcemanager.folderViewer"
+        members: ["group:cloud-leads@mycompany.com"]
+  - name: "sandbox"
+    iam: []
+
+# ------------------------------------------------------------------------------
+# 5. SUB-FOLDERS (Parent: One of top_level_folders)
+# ------------------------------------------------------------------------------
+sub_folders:
+  - name: "development"
+    parent: "workloads"
+    iam:
+      - role: "roles/viewer"
+        members: ["group:developers@mycompany.com"]
+      # Temporal IAM Condition example
+      - role: "roles/resourcemanager.folderAdmin"
+        members: ["user:lead-dev@mycompany.com"]
+        condition:
+          title: "temporary_lead_access"
+          description: "Expires Dec 31, 2026"
+          expression: 'request.time < timestamp("2026-12-31T23:59:59Z")'
+  - name: "production"
+    parent: "workloads"
+    iam:
+      - role: "roles/viewer"
+        members: ["group:sre-team@mycompany.com"]
+
+# ------------------------------------------------------------------------------
+# 6. DYNAMIC PROJECTS
+# ------------------------------------------------------------------------------
+projects:
+  - name: "ecommerce-api"
+    prefix: "acme-dev"
+    target_folder: "development"
+    random_id: true
+    deprivilege_default_sa: true
+    lien: false                         # Dev project: no hard deletion lien
+    apis:
+      - "compute.googleapis.com"
+      - "container.googleapis.com"
+      - "storage.googleapis.com"
+      - "cloudbuild.googleapis.com"
+    labels:
+      environment: "dev"
+      cost_center: "engineering"
+    tag_bindings:
+      - "environment/dev"
+      - "data_classification/internal"
+    iam:
+      - role: "roles/viewer"
+        members: ["group:developers@mycompany.com"]
+      - role: "roles/storage.objectAdmin"
+        members: ["group:developers@mycompany.com"]
+    custom_service_accounts:
+      - account_id: "backend-runtime-sa"
+        display_name: "Backend Runtime Identity"
+        roles:
+          - "roles/storage.objectUser"
+          - "roles/logging.logWriter"
+      - account_id: "cicd-deployer-sa"
+        display_name: "CI/CD Pipeline Service Account"
+        roles:
+          - "roles/container.developer"
+          - "roles/storage.admin"
+
+  - name: "payments-core"
+    prefix: "acme-prod"
+    target_folder: "production"
+    random_id: true
+    deprivilege_default_sa: true
+    lien: true                          # Prod project: HARD DELETION LIEN ACTIVE
+    apis:
+      - "compute.googleapis.com"
+      - "container.googleapis.com"
+    labels:
+      environment: "prod"
+      cost_center: "finance"
+    tag_bindings:
+      - "environment/prod"
+      - "data_classification/restricted"
+    iam:
+      - role: "roles/viewer"
+        members: ["group:sre-team@mycompany.com"]
+    custom_service_accounts: []

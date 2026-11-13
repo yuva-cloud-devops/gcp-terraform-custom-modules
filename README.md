@@ -10,16 +10,18 @@ A collection of enterprise-grade, highly reusable, and production-tested Terrafo
 
 ## Design Principles
 
-- **Data-Driven Infrastructure**: Complex cloud landing zones and network topologies—including resource hierarchies, Project Factory setups, VPCs, multi-region subnets, Cloud Routers with BGP, Cloud NAT gateways, Private Service Access, and firewall policies—are declared via human-readable YAML configurations.
+- **Data-Driven Infrastructure**: Complex cloud landing zones and network topologies—including resource hierarchies, Project Factory setups, organizational governance, VPCs, multi-region subnets, Cloud Routers with BGP, Cloud NAT gateways, Private Service Access, and firewall policies—are declared via human-readable YAML configurations.
 - **Official Module Alignment**: Built following the architecture and feature sets of official Google Cloud Terraform modules:
   - Resource hierarchy & project factory best practices ([`terraform-google-modules/project-factory`](https://registry.terraform.io/modules/terraform-google-modules/project-factory/google/latest))
   - Core networking ([`terraform-google-modules/network/google`](https://registry.terraform.io/modules/terraform-google-modules/network/google/latest))
   - Cloud Router with BGP ([`terraform-google-modules/cloud-router/google`](https://registry.terraform.io/modules/terraform-google-modules/cloud-router/google/latest))
   - Cloud NAT ([`terraform-google-modules/cloud-nat/google`](https://registry.terraform.io/modules/terraform-google-modules/cloud-nat/google/latest))
-- **Security by Default**:
-  - Non-authoritative IAM member bindings (`google_*_iam_member`) to prevent accidental permission stripping.
-  - Automatic deprivileging of the default Compute Engine service account.
-  - Project deletion protection (`deletion_policy = "PREVENT"`).
+- **Enterprise Governance & Security by Default**:
+  - Centralized **Essential Contacts** for automated security, incident, and billing notifications.
+  - Cryptographic **Resource Manager Tags** at the organization root for Attribute-Based Access Control (ABAC) and Organization Policies.
+  - Hard project protection via **Resource Manager Liens** (`resourcemanager.projects.delete`).
+  - Automatic deprivileging of the default Compute Engine service account (`roles/editor` revocation).
+  - Non-authoritative IAM member bindings (`google_*_iam_member`) with Common Expression Language (CEL) conditions.
   - Private-only subnets, Private Google Access, Private Service Access for managed databases, Cloud NAT for controlled egress, and explicit least-privilege firewall rules.
 
 ---
@@ -28,7 +30,7 @@ A collection of enterprise-grade, highly reusable, and production-tested Terrafo
 
 ```
 gcp-terraform-custom-modules/
-├── foundation-infrastructure/                # Cloud Landing Zone & Hierarchy Factory
+├── foundation-infrastructure/                # Cloud Landing Zone & Project Factory
 │   ├── 0-locals.tf                           # YAML parser & schema flattening pipeline
 │   ├── 1-org-iam.tf                          # Organization-level IAM member bindings
 │   ├── 2-folders.tf                          # Top-level & nested sub-folder hierarchy
@@ -37,8 +39,11 @@ gcp-terraform-custom-modules/
 │   ├── 5-apis.tf                             # Dynamic API enablement per project
 │   ├── 6-users-groups.tf                     # Project-level IAM with CEL conditions
 │   ├── 7-custom-service-accounts.tf          # Dedicated workload SAs & project role assignments
+│   ├── 8-project-lien.tf                     # Project deletion liens (Hard deletion protection)
+│   ├── 9-resource-tag-binding.tf             # Cryptographic resource tag bindings (ABAC)
+│   ├── 10-governance.tf                      # Essential contacts & organization tag taxonomy
 │   ├── variables.tf                          # Configuration path variable
-│   ├── outputs.tf                            # Output maps for folders, projects, & service accounts
+│   ├── outputs.tf                            # Output maps for folders, projects, SAs, and tags
 │   ├── versions.tf                           # Provider and Terraform constraints
 │   └── README.md                             # Foundation module documentation
 ├── networking-infrastructure/                # Core networking domain
@@ -68,7 +73,7 @@ gcp-terraform-custom-modules/
 
 | Domain | Module | Description | Directory |
 |---|---|---|---|
-| **Foundation** | **Resource Hierarchy & Project Factory** | Declarative GCP Landing Zone via YAML. Provisions multi-tier folder hierarchy, creates projects with billing attachment, enables APIs, assigns organization/folder/project IAM (with CEL conditions), creates custom workload service accounts, and strips default Compute Engine service account privileges. | [`foundation-infrastructure`](./foundation-infrastructure/) |
+| **Foundation** | **Resource Hierarchy & Project Factory** | Declarative GCP Landing Zone via YAML. Provisions Essential Contacts, organization Resource Tags, multi-tier folder hierarchy, projects with billing attachment, API activation, organization/folder/project IAM (with CEL conditions), custom workload service accounts, Project Deletion Liens, and Compute Engine default SA deprivileging. | [`foundation-infrastructure`](./foundation-infrastructure/) |
 | **Networking** | **VPC, Subnets, BGP Router, NAT, Firewall & PSA** | End-to-end VPC networking provisioned via YAML. Supports multi-region subnets, secondary ranges for GKE, VPC flow logs, Cloud Routers with detailed BGP configuration, Cloud NAT gateways, Private Service Access (`servicenetworking.googleapis.com`), and ingress/egress firewall rules. | [`networking-infrastructure/vpc-subnet-router-nat-firewall`](./networking-infrastructure/vpc-subnet-router-nat-firewall/) |
 
 ---
@@ -77,13 +82,29 @@ gcp-terraform-custom-modules/
 
 ### Example 1: Foundation Infrastructure & Project Factory
 
-#### 1. Define your resource hierarchy in `hierarchy.yaml`:
+#### 1. Define your cloud landing zone in `hierarchy.yaml`:
 
 ```yaml
 organization_id: "123456789012"
 billing_account_id: "012345-56789A-BCDEF0"
 
-# Organization IAM
+# Essential Contacts
+essential_contacts:
+  - email: "cloud-security@mycompany.com"
+    notification_categories: ["SECURITY", "TECHNICAL"]
+  - email: "finops-leads@mycompany.com"
+    notification_categories: ["BILLING"]
+
+# Organization Cryptographic Resource Tags
+tags:
+  - key: "environment"
+    description: "Deployment lifecycle stage"
+    values: ["dev", "staging", "prod"]
+  - key: "data_classification"
+    description: "Data sensitivity classification"
+    values: ["public", "internal", "restricted"]
+
+# Root Organization IAM
 organization_iam:
   - role: "roles/resourcemanager.organizationAdmin"
     members:
@@ -110,6 +131,7 @@ projects:
     target_folder: "development"
     random_id: true
     deprivilege_default_sa: true
+    lien: false
     apis:
       - "compute.googleapis.com"
       - "container.googleapis.com"
@@ -117,12 +139,15 @@ projects:
     labels:
       environment: "dev"
       cost_center: "engineering"
+    tag_bindings:
+      - "environment/dev"
+      - "data_classification/internal"
     iam:
       - role: "roles/viewer"
         members: ["group:developers@mycompany.com"]
     custom_service_accounts:
-      - account_id: "ecommerce-backend-sa"
-        display_name: "Ecommerce Backend Workload Identity"
+      - account_id: "backend-runtime-sa"
+        display_name: "Backend Runtime Identity"
         roles:
           - "roles/storage.objectUser"
           - "roles/logging.logWriter"
@@ -142,6 +167,10 @@ output "folders" {
 
 output "projects" {
   value = module.foundation.projects
+}
+
+output "service_accounts" {
+  value = module.foundation.service_accounts
 }
 ```
 
@@ -240,13 +269,14 @@ output "mumbai_subnet_id" {
 1. **Terraform CLI**: Version `>= 1.5.0`
 2. **Google Cloud SDK (`gcloud`)**: Installed and authenticated (`gcloud auth application-default login`)
 3. **Required IAM Permissions**:
-   - **For Foundation**: `roles/resourcemanager.organizationAdmin`, `roles/resourcemanager.folderAdmin`, and `roles/billing.user` (or `roles/billing.admin`)
+   - **For Foundation**: `roles/resourcemanager.organizationAdmin`, `roles/resourcemanager.folderAdmin`, `roles/billing.user` (or `roles/billing.admin`), `roles/resourcemanager.tagAdmin`, `roles/essentialcontacts.admin`, and `roles/resourcemanager.lienModifier`
    - **For Networking**: `roles/compute.networkAdmin`, `roles/compute.securityAdmin`, and `roles/servicenetworking.networksAdmin`
 4. **Required GCP APIs Enabled** (on administrative/seed project):
    - `cloudresourcemanager.googleapis.com`
    - `serviceusage.googleapis.com`
    - `cloudbilling.googleapis.com`
    - `iam.googleapis.com`
+   - `essentialcontacts.googleapis.com`
    - `compute.googleapis.com`
    - `servicenetworking.googleapis.com` (when Private Service Access is enabled)
 

@@ -5,6 +5,7 @@
 # Local .terraform directories and cached provider binaries
 **/.terraform/
 .terraform/
+.terraform.lock.hcl
 
 # Terraform state files
 *.tfstate
@@ -32,8 +33,8 @@ terraform.rc
 # ==============================================================================
 # Examples Directory (Local runs, test state, and provider plugins)
 # ==============================================================================
-examples/
-**/examples/
+# examples/
+# **/examples/
 
 # ==============================================================================
 # OS & Editor Artifacts
