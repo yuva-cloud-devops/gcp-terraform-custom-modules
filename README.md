@@ -10,7 +10,7 @@ A collection of enterprise-grade, highly reusable, and production-tested Terrafo
 
 ## Design Principles
 
-- **Data-Driven Infrastructure**: Complex cloud landing zones and network topologies—including resource hierarchies, Project Factory setups, organizational governance, VPCs, multi-region subnets, Cloud Routers with BGP, Cloud NAT gateways, Private Service Access, and firewall policies—are declared via human-readable YAML configurations.
+- **Data-Driven Infrastructure**: Complex cloud landing zones and network topologies—including resource hierarchies, Project Factory setups, organizational governance, VPCs, multi-region subnets, Cloud Routers with BGP, Cloud NAT gateways, Private Service Access, hierarchical firewall policies, and Cloud DNS—are declared via human-readable YAML configurations.
 - **Official Module Alignment**: Built following the architecture and feature sets of official Google Cloud Terraform modules:
   - Resource hierarchy & project factory best practices ([`terraform-google-modules/project-factory`](https://registry.terraform.io/modules/terraform-google-modules/project-factory/google/latest))
   - Core networking ([`terraform-google-modules/network/google`](https://registry.terraform.io/modules/terraform-google-modules/network/google/latest))
@@ -19,6 +19,11 @@ A collection of enterprise-grade, highly reusable, and production-tested Terrafo
 - **Enterprise Governance & Security by Default**:
   - Centralized **Essential Contacts** for automated security, incident, and billing notifications.
   - Cryptographic **Resource Manager Tags** at the organization root for Attribute-Based Access Control (ABAC) and Organization Policies.
+  - Organization- and Folder-level **Hierarchical Firewall Policies** enforcing non-negotiable security guardrails before project VPC firewalls.
+  - **Hybrid & Private Cloud DNS** with support for on-premises forwarding via Cloud VPN/Interconnect and zero-egress Restricted Google APIs routing (`199.36.153.4/30`).
+  - **Zero-Trust Private Service Connect (PSC)** for private, overlapping-IP-safe connectivity to Google APIs (`all-apis`, `vpc-sc`) and producer-published microservices/SaaS without VPC peering.
+  - **High-Throughput VPC Network Peering** for direct, low-latency RFC 1918 cross-VPC communication with automated bi-directional handshakes and dynamic route exchanges.
+  - **99.99% SLA High Availability (HA) Cloud VPN** providing dual-interface IPsec site-to-site connectivity with dynamic eBGP routing and sub-second BFD failover.
   - Hard project protection via **Resource Manager Liens** (`resourcemanager.projects.delete`).
   - Automatic deprivileging of the default Compute Engine service account (`roles/editor` revocation).
   - Non-authoritative IAM member bindings (`google_*_iam_member`) with Common Expression Language (CEL) conditions.
@@ -48,6 +53,59 @@ gcp-terraform-custom-modules/
 │   └── README.md                             # Foundation module documentation
 ├── networking-infrastructure/                # Core networking domain
 │   ├── README.md                             # Networking overview & domain docs
+│   ├── cloud-dns/                            # Google Cloud DNS managed zones & records
+│   │   ├── 0-locals.tf                       # YAML parser, FQDN normalizer & multi-tier network resolver
+│   │   ├── 1-managed-zones.tf                # Managed zones (private, forwarding, peering)
+│   │   ├── 2-dns-records.tf                  # Authoritative DNS record sets
+│   │   ├── variables.tf                      # Input variables
+│   │   ├── outputs.tf                        # Output definitions, nameservers & record metrics
+│   │   ├── versions.tf                       # Provider constraints
+│   │   └── README.md                         # Detailed module documentation
+│   ├── ha-cloud-vpn/                         # High Availability (HA) Cloud VPN (99.99% SLA)
+│   │   ├── 0-locals.tf                       # YAML parser, gateway mapping & tunnel flattening
+│   │   ├── 1-vpn-gateway.tf                  # HA VPN Gateway resources
+│   │   ├── 2-external-gateway.tf             # On-premises external peer gateway definitions
+│   │   ├── 3-tunnels.tf                      # Redundant IPsec VPN tunnel resources
+│   │   ├── 4-router-interface.tf             # Cloud Router point-to-point BGP interfaces
+│   │   ├── 5-router-peer.tf                  # Cloud Router eBGP peering sessions with BFD
+│   │   ├── variables.tf                      # Input variables
+│   │   ├── outputs.tf                        # Gateway IPs, tunnel IDs, interfaces & peers
+│   │   ├── versions.tf                       # Provider constraints
+│   │   └── README.md                         # Detailed module documentation
+│   ├── hierarchical-firewalls/               # Folder/Org hierarchical firewall guardrails
+│   │   ├── 0-locals.tf                       # YAML parser & deterministic rule indexing
+│   │   ├── 1-firewall.tf                     # Policy container resource
+│   │   ├── 2-rules.tf                        # Dynamic firewall rules with Layer 4 matching
+│   │   ├── 3-firewall-association.tf         # Policy association to target Folder or Org
+│   │   ├── variables.tf                      # Input variables
+│   │   ├── outputs.tf                        # Output definitions & rule summaries
+│   │   ├── versions.tf                       # Provider constraints
+│   │   └── README.md                         # Detailed module documentation
+│   ├── network-peering/                      # VPC Network Peering (Bi-directional handshake)
+│   │   ├── 0-locals.tf                       # YAML parser & reverse peering partitioner
+│   │   ├── main.tf                           # Forward and automated reverse peering resources
+│   │   ├── variables.tf                      # Input variables
+│   │   ├── outputs.tf                        # Comprehensive peering state outputs & counts
+│   │   ├── versions.tf                       # Provider constraints
+│   │   └── README.md                         # Detailed module documentation
+│   ├── private-service-connect/              # Private Service Connect (Google APIs & published services)
+│   │   ├── 0-locals.tf                       # YAML parser & subnetwork self-link normalizer
+│   │   ├── 1-psc-apis.tf                     # Global internal IP & PSC forwarding rule for Google APIs
+│   │   ├── 2-psc-services.tf                 # Regional internal IP & PSC forwarding rules for published services
+│   │   ├── variables.tf                      # Input variables
+│   │   ├── outputs.tf                        # Output definitions (endpoints, IPs, counts)
+│   │   ├── versions.tf                       # Provider constraints
+│   │   └── README.md                         # Detailed module documentation
+│   ├── shared-vpc/                           # Shared VPC cross-project attachments & subnet IAM
+│   │   ├── 0-locals.tf                       # YAML parser & robot service agent derivation
+│   │   ├── 1-host-project.tf                 # Host project enablement
+│   │   ├── 2-service-projects.tf             # Service project dynamic attachment
+│   │   ├── 3-gke-host-level-permission.tf    # GKE service agent host-level IAM permissions
+│   │   ├── 4-custom-subnet-iam.tf            # Fine-grained subnet networkUser delegations
+│   │   ├── variables.tf                      # Input variables
+│   │   ├── outputs.tf                        # Output definitions
+│   │   ├── versions.tf                       # Terraform and provider constraints
+│   │   └── README.md                         # Detailed Shared VPC module documentation
 │   └── vpc-subnet-router-nat-firewall/       # VPC, subnets, BGP routers, NAT, firewalls & PSA
 │       ├── 0-locals.tf
 │       ├── 1-vpc.tf
@@ -61,8 +119,15 @@ gcp-terraform-custom-modules/
 │       ├── versions.tf
 │       └── README.md
 ├── examples/                                 # Reference implementations & sample setups
-│   ├── foundation/                           # Foundation module deployment example
-│   └── network/                              # Networking module deployment example
+│   ├── foundation/                           # Enterprise landing zone deployment example
+│   └── network/
+│       ├── basic-vpc-setup/                  # Multi-VPC hub & spoke deployment example
+│       ├── shared-vpc-setup/                 # Two-stage Shared VPC cross-project setup
+│       ├── firewall-setup/                   # Hierarchical firewall guardrails example
+│       ├── dns-setup/                        # Private & hybrid Cloud DNS example
+│       ├── peering-setup/                    # VPC Network Peering deployment example
+│       ├── psc-setup/                        # Private Service Connect deployment example
+│       └── vpn-setup/                        # HA Cloud VPN site-to-site deployment example
 ├── .gitignore                                # Git ignore rules
 └── README.md                                 # Root repository documentation
 ```
@@ -75,6 +140,12 @@ gcp-terraform-custom-modules/
 |---|---|---|---|
 | **Foundation** | **Resource Hierarchy & Project Factory** | Declarative GCP Landing Zone via YAML. Provisions Essential Contacts, organization Resource Tags, multi-tier folder hierarchy, projects with billing attachment, API activation, organization/folder/project IAM (with CEL conditions), custom workload service accounts, Project Deletion Liens, and Compute Engine default SA deprivileging. | [`foundation-infrastructure`](./foundation-infrastructure/) |
 | **Networking** | **VPC, Subnets, BGP Router, NAT, Firewall & PSA** | End-to-end VPC networking provisioned via YAML. Supports multi-region subnets, secondary ranges for GKE, VPC flow logs, Cloud Routers with detailed BGP configuration, Cloud NAT gateways, Private Service Access (`servicenetworking.googleapis.com`), and ingress/egress firewall rules. | [`networking-infrastructure/vpc-subnet-router-nat-firewall`](./networking-infrastructure/vpc-subnet-router-nat-firewall/) |
+| **Networking** | **Shared VPC (Cross-Project Subnet IAM)** | Declarative Shared VPC orchestration via YAML. Enables Host Project, attaches Service Projects, automates GKE/Compute/Cloud Run service agent permissions, and provisions least-privilege subnetwork IAM delegations. | [`networking-infrastructure/shared-vpc`](./networking-infrastructure/shared-vpc/) |
+| **Networking** | **Hierarchical Firewall Policies** | Centrally managed Organization- and Folder-level security guardrails. Evaluated prior to any VPC firewall rules, enforcing universal internet port blocks (SSH/RDP), health check probes, and RFC 1918 internal communication. | [`networking-infrastructure/hierarchical-firewalls`](./networking-infrastructure/hierarchical-firewalls/) |
+| **Networking** | **Cloud DNS (Private, Hybrid & Restricted APIs)** | Declarative Google Cloud DNS management via YAML. Provisions Private Authoritative Zones, Hybrid DNS Forwarding to on-premises resolvers across Cloud VPN/Interconnect, Cross-VPC Peering, and zero-egress Restricted Google APIs VIP routing (`199.36.153.4/30`). | [`networking-infrastructure/cloud-dns`](./networking-infrastructure/cloud-dns/) |
+| **Networking** | **Private Service Connect (Google APIs & Published SaaS)** | Declarative Google Cloud Private Service Connect (PSC) management via YAML. Provisions global PSC endpoints for Google APIs (`all-apis`, `vpc-sc`) and regional endpoints for published third-party or producer services without VPC peering or public IPs. | [`networking-infrastructure/private-service-connect`](./networking-infrastructure/private-service-connect/) |
+| **Networking** | **VPC Network Peering (Automated Bi-directional Handshake)** | Declarative Google Cloud VPC Network Peering via YAML. Provisions bi-directional or uni-directional peering connections with automatic reverse peering creation, route exchange controls (custom routes, public subnets), and dependency ordering. | [`networking-infrastructure/network-peering`](./networking-infrastructure/network-peering/) |
+| **Networking** | **High Availability (HA) Cloud VPN (99.99% SLA)** | Declarative Google Cloud HA VPN management via YAML. Provisions dual-interface gateways, external on-premises peer gateways, redundant IPsec tunnels, Cloud Router interfaces, and dynamic eBGP sessions with BFD support. | [`networking-infrastructure/ha-cloud-vpn`](./networking-infrastructure/ha-cloud-vpn/) |
 
 ---
 
@@ -82,170 +153,16 @@ gcp-terraform-custom-modules/
 
 ### Example 1: Foundation Infrastructure & Project Factory
 
-#### 1. Define your cloud landing zone in `hierarchy.yaml`:
-
-```yaml
-organization_id: "123456789012"
-billing_account_id: "012345-56789A-BCDEF0"
-
-# Essential Contacts
-essential_contacts:
-  - email: "cloud-security@mycompany.com"
-    notification_categories: ["SECURITY", "TECHNICAL"]
-  - email: "finops-leads@mycompany.com"
-    notification_categories: ["BILLING"]
-
-# Organization Cryptographic Resource Tags
-tags:
-  - key: "environment"
-    description: "Deployment lifecycle stage"
-    values: ["dev", "staging", "prod"]
-  - key: "data_classification"
-    description: "Data sensitivity classification"
-    values: ["public", "internal", "restricted"]
-
-# Root Organization IAM
-organization_iam:
-  - role: "roles/resourcemanager.organizationAdmin"
-    members:
-      - "group:gcp-org-admins@mycompany.com"
-
-# Multi-Tier Folders
-top_level_folders:
-  - name: "workloads"
-    iam:
-      - role: "roles/resourcemanager.folderViewer"
-        members: ["group:cloud-leads@mycompany.com"]
-
-sub_folders:
-  - name: "development"
-    parent: "workloads"
-    iam:
-      - role: "roles/viewer"
-        members: ["group:developers@mycompany.com"]
-
-# Projects (Project Factory)
-projects:
-  - name: "ecommerce-api"
-    prefix: "acme-dev"
-    target_folder: "development"
-    random_id: true
-    deprivilege_default_sa: true
-    lien: false
-    apis:
-      - "compute.googleapis.com"
-      - "container.googleapis.com"
-      - "storage.googleapis.com"
-    labels:
-      environment: "dev"
-      cost_center: "engineering"
-    tag_bindings:
-      - "environment/dev"
-      - "data_classification/internal"
-    iam:
-      - role: "roles/viewer"
-        members: ["group:developers@mycompany.com"]
-    custom_service_accounts:
-      - account_id: "backend-runtime-sa"
-        display_name: "Backend Runtime Identity"
-        roles:
-          - "roles/storage.objectUser"
-          - "roles/logging.logWriter"
-```
-
-#### 2. Reference the Foundation module in your `main.tf`:
-
 ```hcl
 module "foundation" {
   source           = "git::https://github.com/yuva-cloud-devops/gcp-terraform-custom-modules.git//foundation-infrastructure?ref=main"
   yaml_config_path = "${path.module}/hierarchy.yaml"
 }
-
-output "folders" {
-  value = module.foundation.folders
-}
-
-output "projects" {
-  value = module.foundation.projects
-}
-
-output "service_accounts" {
-  value = module.foundation.service_accounts
-}
 ```
 
 ---
 
-### Example 2: Networking Infrastructure
-
-#### 1. Define your network specification in `network-config.yaml`:
-
-```yaml
-project_id: yuvaraj-internal-project
-region: asia-south1
-
-tags:
-  provisioned_by: terraform
-  environment: dev
-  project: gcp-platform-foundation-terraform
-
-network:
-  vpc:
-    network_name: platform-foundation-vpc
-
-    # Optional Private Service Access (for Cloud SQL, Memorystore, etc.)
-    private_service_access:
-      enabled: true
-      name: google-managed-services-psa
-      prefix_length: 16
-
-    subnets:
-      - subnet_name: private-subnet-mumbai
-        subnet_ip: 10.20.1.0/24
-        subnet_region: asia-south1
-        subnet_private_access: true
-      - subnet_name: private-subnet-singapore
-        subnet_ip: 10.30.1.0/24
-        subnet_region: asia-southeast1
-        subnet_private_access: true
-
-    firewall_rules:
-      ingress:
-        - name: allow-iap-ssh
-          source_ranges:
-            - 35.235.240.0/20
-          target_tags:
-            - allow-iap-ssh
-          ports:
-            - "22"
-      egress:
-        - name: allow-internet
-          destination_ranges:
-            - 0.0.0.0/0
-          ports:
-            - "80"
-            - "443"
-
-  router:
-    - name: cloud-router-mumbai
-      region: asia-south1
-      bgp:
-        asn: "65001"
-    - name: cloud-router-singapore
-      region: asia-southeast1
-      bgp:
-        asn: "65002"
-
-  nat:
-    - name: cloud-nat-mumbai
-      region: asia-south1
-      router_name: cloud-router-mumbai
-    - name: cloud-nat-singapore
-      region: asia-southeast1
-      router_name: cloud-router-singapore
-```
-
-#### 2. Reference the Networking module in your `main.tf`:
+### Example 2: Core Networking & Shared VPC
 
 ```hcl
 module "networking" {
@@ -253,12 +170,179 @@ module "networking" {
   config_file_path = "${path.module}/network-config.yaml"
 }
 
-output "vpc_id" {
-  value = module.networking.vpc_ids["platform-foundation-vpc"]
-}
+module "shared_vpc" {
+  source           = "git::https://github.com/yuva-cloud-devops/gcp-terraform-custom-modules.git//networking-infrastructure/shared-vpc?ref=main"
+  yaml_config_path = "${path.module}/shared_vpc.yaml"
 
-output "mumbai_subnet_id" {
-  value = module.networking.subnet_ids["private-subnet-mumbai"]
+  depends_on = [module.networking]
+}
+```
+
+---
+
+### Example 3: Hierarchical Firewall Guardrails
+
+```hcl
+module "hierarchical_firewalls" {
+  source           = "git::https://github.com/yuva-cloud-devops/gcp-terraform-custom-modules.git//networking-infrastructure/hierarchical-firewalls?ref=main"
+  yaml_config_path = "${path.module}/firewalls.yaml"
+}
+```
+
+---
+
+### Example 4: Enterprise Cloud DNS Management
+
+#### 1. Define DNS zones and records in `dns.yaml`:
+
+```yaml
+project_id: "yuvaraj-internal-project"
+
+zones:
+  - name: "internal-corp"
+    dns_name: "internal.mycompany."
+    type: "private"
+    records:
+      - name: "api"
+        type: "A"
+        ttl: 300
+        rrdatas: ["10.0.0.50", "10.0.0.51"]
+
+  - name: "onprem-forwarding"
+    dns_name: "onprem.mycompany."
+    type: "forwarding"
+    forwarding_path: "private"
+    target_name_servers: ["192.168.1.10", "192.168.1.11"]
+
+  - name: "googleapis-restricted"
+    dns_name: "googleapis.com."
+    type: "private"
+    records:
+      - name: "restricted"
+        type: "A"
+        rrdatas: ["199.36.153.4", "199.36.153.5", "199.36.153.6", "199.36.153.7"]
+      - name: "*"
+        type: "CNAME"
+        rrdatas: ["restricted.googleapis.com."]
+```
+
+#### 2. Instantiate the Cloud DNS module in your `main.tf`:
+
+```hcl
+module "cloud_dns" {
+  source            = "git::https://github.com/yuva-cloud-devops/gcp-terraform-custom-modules.git//networking-infrastructure/cloud-dns?ref=main"
+  yaml_config_path  = "${path.module}/dns.yaml"
+  network_self_link = module.networking.vpcs["platform-foundation-vpc"].self_link
+}
+```
+
+---
+
+### Example 5: Private Service Connect (PSC)
+
+#### 1. Define PSC endpoints in `psc.yaml`:
+
+```yaml
+project_id: "yuvaraj-internal-project"
+
+# Global PSC Endpoint for Google APIs
+google_apis:
+  - name: "psc-google-apis"
+    ip_address: "10.0.100.10"
+    target: "all-apis"
+
+# Regional PSC Endpoints for Published Third-Party / Producer SaaS
+service_attachments:
+  - name: "psc-analytics-saas"
+    region: "asia-south1"
+    subnetwork: "psc-demo-subnet"
+    ip_address: "10.0.1.200"
+    target_service_attachment: "projects/producer-corp/regions/asia-south1/serviceAttachments/analytics-service"
+```
+
+#### 2. Instantiate the Private Service Connect module in your `main.tf`:
+
+```hcl
+module "psc" {
+  source            = "git::https://github.com/yuva-cloud-devops/gcp-terraform-custom-modules.git//networking-infrastructure/private-service-connect?ref=main"
+  yaml_config_path  = "${path.module}/psc.yaml"
+  network_self_link = module.networking.vpcs["platform-foundation-vpc"].self_link
+}
+```
+
+---
+
+### Example 6: VPC Network Peering (Automated Bi-directional Handshake)
+
+#### 1. Define Peering Topology in `peering.yaml`:
+
+```yaml
+peerings:
+  - name: "peering-hub-to-spoke"
+    peer_network_self_link: "projects/yuvaraj-internal-project/global/networks/peering-demo-spoke-vpc"
+    auto_create_reverse_peering: true # Creates return peering automatically for instant ACTIVE status
+    export_custom_routes: true       # Export custom routes to peer
+    import_custom_routes: false
+```
+
+#### 2. Instantiate the VPC Peering module in your `main.tf`:
+
+```hcl
+module "vpc_peering" {
+  source                  = "git::https://github.com/yuva-cloud-devops/gcp-terraform-custom-modules.git//networking-infrastructure/network-peering?ref=main"
+  yaml_config_path        = "${path.module}/peering.yaml"
+  local_network_self_link = module.networking.vpcs["hub-vpc"].self_link
+}
+```
+
+---
+
+### Example 7: High Availability (HA) Cloud VPN (99.99% SLA)
+
+#### 1. Define HA VPN Gateways, Tunnels, and BGP in `vpn.yaml`:
+
+```yaml
+project_id: "yuvaraj-internal-project"
+default_region: "asia-south1"
+default_router_name: "cr-landing-zone-main"
+
+gateways:
+  - name: "ha-vpn-onprem-dc"
+    peer_gateway:
+      name: "peer-onprem-cisco-asa"
+      redundancy_type: "TWO_IPS_REDUNDANCY"
+      interfaces:
+        - id: 0
+          ip_address: "203.0.113.10"
+        - id: 1
+          ip_address: "203.0.113.11"
+    tunnels:
+      - name: "tunnel-0"
+        vpn_gateway_interface: 0
+        peer_external_gateway_interface: 0
+        shared_secret: "C0rporateVpnSecretKey2026!#"
+        bgp_session:
+          router_interface_ip: "169.254.0.1/30"
+          peer_ip_address: "169.254.0.2"
+          peer_asn: 65001
+      - name: "tunnel-1"
+        vpn_gateway_interface: 1
+        peer_external_gateway_interface: 1
+        shared_secret: "C0rporateVpnSecretKey2026!#"
+        bgp_session:
+          router_interface_ip: "169.254.1.1/30"
+          peer_ip_address: "169.254.1.2"
+          peer_asn: 65001
+```
+
+#### 2. Instantiate the HA Cloud VPN module in your `main.tf`:
+
+```hcl
+module "ha_vpn" {
+  source            = "git::https://github.com/yuva-cloud-devops/gcp-terraform-custom-modules.git//networking-infrastructure/ha-cloud-vpn?ref=main"
+  yaml_config_path  = "${path.module}/vpn.yaml"
+  network_self_link = module.networking.vpcs["platform-foundation-vpc"].self_link
+  router_name       = "cr-landing-zone-main"
 }
 ```
 
@@ -270,7 +354,10 @@ output "mumbai_subnet_id" {
 2. **Google Cloud SDK (`gcloud`)**: Installed and authenticated (`gcloud auth application-default login`)
 3. **Required IAM Permissions**:
    - **For Foundation**: `roles/resourcemanager.organizationAdmin`, `roles/resourcemanager.folderAdmin`, `roles/billing.user` (or `roles/billing.admin`), `roles/resourcemanager.tagAdmin`, `roles/essentialcontacts.admin`, and `roles/resourcemanager.lienModifier`
-   - **For Networking**: `roles/compute.networkAdmin`, `roles/compute.securityAdmin`, and `roles/servicenetworking.networksAdmin`
+   - **For Networking, PSC, VPC Peering & HA VPN**: `roles/compute.networkAdmin`, `roles/compute.securityAdmin`, and `roles/servicenetworking.networksAdmin`
+   - **For Shared VPC**: `roles/compute.xpnAdmin` (at Folder/Org level) and `roles/resourcemanager.projectIamAdmin` (Host project)
+   - **For Hierarchical Firewalls**: `roles/compute.orgFirewallPolicyAdmin` or `roles/compute.orgSecurityPolicyAdmin` (at Folder/Org level)
+   - **For Cloud DNS**: `roles/dns.admin`
 4. **Required GCP APIs Enabled** (on administrative/seed project):
    - `cloudresourcemanager.googleapis.com`
    - `serviceusage.googleapis.com`
@@ -278,7 +365,8 @@ output "mumbai_subnet_id" {
    - `iam.googleapis.com`
    - `essentialcontacts.googleapis.com`
    - `compute.googleapis.com`
-   - `servicenetworking.googleapis.com` (when Private Service Access is enabled)
+   - `servicenetworking.googleapis.com`
+   - `dns.googleapis.com`
 
 ---
 

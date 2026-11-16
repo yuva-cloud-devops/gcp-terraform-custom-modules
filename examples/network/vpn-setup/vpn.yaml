@@ -1,0 +1,53 @@
+# ==============================================================================
+# HA CLOUD VPN DEMO CONFIGURATION
+# ==============================================================================
+# Declares HA VPN Gateways, on-premises external peer gateways, and redundant
+# IPsec tunnels with eBGP peering sessions.
+# ==============================================================================
+
+project_id: "yuvaraj-internal-project"
+default_region: "asia-south1"
+default_router_name: "cr-vpn-demo"
+
+# ------------------------------------------------------------------------------
+# HA VPN GATEWAYS & REDUNDANT TUNNELS (99.99% SLA)
+# ------------------------------------------------------------------------------
+gateways:
+  - name: "ha-vpn-onprem-dc"
+    region: "asia-south1"
+    router_name: "cr-vpn-demo"
+    description: "HA VPN connection to Corporate On-Premises Data Center"
+
+    # External Peer Gateway (Corporate On-Premises Router / Firewall)
+    peer_gateway:
+      name: "peer-onprem-cisco-asa"
+      redundancy_type: "TWO_IPS_REDUNDANCY" # Options: TWO_IPS_REDUNDANCY, SINGLE_IP_INTERNALLY_REDUNDANT, FOUR_IPS_REDUNDANCY
+      interfaces:
+        - id: 0
+          ip_address: "203.0.113.10" # On-Prem primary WAN public IP
+        - id: 1
+          ip_address: "203.0.113.11" # On-Prem secondary WAN public IP
+
+    # Redundant Active-Active Tunnels
+    tunnels:
+      # Tunnel 0: GCP Interface 0 -> Peer Interface 0
+      - name: "tunnel-0"
+        vpn_gateway_interface: 0
+        peer_external_gateway_interface: 0
+        shared_secret: "C0rporateVpnSecretKey2026!#"
+        bgp_session:
+          router_interface_ip: "169.254.0.1/30" # GCP link-local BGP IP
+          peer_ip_address: "169.254.0.2"       # Peer link-local BGP IP
+          peer_asn: 65001                      # On-prem BGP ASN
+          advertised_route_priority: 100
+
+      # Tunnel 1: GCP Interface 1 -> Peer Interface 1
+      - name: "tunnel-1"
+        vpn_gateway_interface: 1
+        peer_external_gateway_interface: 1
+        shared_secret: "C0rporateVpnSecretKey2026!#"
+        bgp_session:
+          router_interface_ip: "169.254.1.1/30" # GCP link-local BGP IP
+          peer_ip_address: "169.254.1.2"       # Peer link-local BGP IP
+          peer_asn: 65001                      # On-prem BGP ASN
+          advertised_route_priority: 100

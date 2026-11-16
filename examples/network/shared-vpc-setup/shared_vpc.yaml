@@ -1,0 +1,38 @@
+host_project_id: "yuvaraj-internal-project"
+
+# ------------------------------------------------------------------------------
+# 1. SERVICE PROJECTS TO ATTACH
+# ------------------------------------------------------------------------------
+service_projects:
+  - project_id: "bharath-internal-project"
+    project_number: "102938475610"
+    enable_gke: true            # Auto-provisions GKE hostServiceAgentUser + Subnet IAM
+    enable_cloud_run: false     # Auto-provisions Cloud Run VPC egress permissions
+    # Subnets this service project is authorized to use:
+    allowed_subnets:
+      - name: "private-subnet-dev"
+        region: "asia-south1"
+
+  - project_id: "vasanth-internal-project"
+    project_number: "987654321098"
+    enable_gke: true
+    enable_cloud_run: true
+    allowed_subnets:
+      - name: "private-subnet-prod"
+        region: "asia-southeast1"
+
+
+# ------------------------------------------------------------------------------
+# 2. CUSTOM HUMAN / GROUP / CI-CD SUB-NETWORKING ACCESS
+# ------------------------------------------------------------------------------
+custom_subnet_iam:
+  - subnet_name: "private-subnet-dev"
+    region: "asia-south1"
+    members:
+      - "group:ecommerce-devs@mycompany.com"
+      - "serviceAccount:cicd-deployer-sa@dev-ecommerce-api.iam.gserviceaccount.com"
+
+  - subnet_name: "private-subnet-prod"
+    region: "asia-southeast1"
+    members:
+      - "group:sre-team@mycompany.com"

@@ -1,0 +1,59 @@
+# Target attachment: "folder" or "organization"
+parent_type: "folder"
+parent_id: "123456789012" # Your Folder ID (e.g., workloads folder)
+
+policy_name: "secops-mandatory-guardrails"
+description: "Non-negotiable organization-wide firewall guardrails"
+
+# ------------------------------------------------------------------------------
+# SECURITY RULES (Evaluated in ascending priority order)
+# ------------------------------------------------------------------------------
+rules:
+  # 1. Block public SSH (Port 22) from the entire internet
+  - priority: 1000
+    direction: "INGRESS"
+    action: "deny"
+    description: "Block public SSH from 0.0.0.0/0"
+    enable_logging: true
+    source_ranges:
+      - "0.0.0.0/0"
+    layer4_configs:
+      - ip_protocol: "tcp"
+        ports: ["22"]
+
+  # 2. Block public RDP (Port 3389) from the entire internet
+  - priority: 1001
+    direction: "INGRESS"
+    action: "deny"
+    description: "Block public RDP from 0.0.0.0/0"
+    enable_logging: true
+    source_ranges:
+      - "0.0.0.0/0"
+    layer4_configs:
+      - ip_protocol: "tcp"
+        ports: ["3389"]
+
+  # 3. Allow Google Cloud Health Checks (Load Balancers & Probes)
+  - priority: 2000
+    direction: "INGRESS"
+    action: "allow"
+    description: "Allow Google Cloud Load Balancer and Health Check probes"
+    enable_logging: false
+    source_ranges:
+      - "35.191.0.0/16"
+      - "130.211.0.0/22"
+    layer4_configs:
+      - ip_protocol: "tcp"
+
+  # 4. Allow Internal Corporate RFC 1918 Communication
+  - priority: 3000
+    direction: "INGRESS"
+    action: "allow"
+    description: "Allow all internal RFC1918 traffic between VPC subnets"
+    enable_logging: false
+    source_ranges:
+      - "10.0.0.0/8"
+      - "172.16.0.0/12"
+      - "192.168.0.0/16"
+    layer4_configs:
+      - ip_protocol: "all"

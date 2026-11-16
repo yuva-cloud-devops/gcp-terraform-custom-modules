@@ -1,0 +1,55 @@
+project_id: "yuvaraj-internal-project"
+
+# ------------------------------------------------------------------------------
+# MANAGED DNS ZONES
+# ------------------------------------------------------------------------------
+zones:
+  # 1. Internal Private Authoritative Zone
+  - name: "internal-corp"
+    dns_name: "internal.mycompany." # Must end with a dot
+    description: "Private internal zone for microservices discovery"
+    type: "private" # Options: private, forwarding, peering
+    records:
+      - name: "api"
+        type: "A"
+        ttl: 300
+        rrdatas: ["10.0.0.50", "10.0.0.51"]
+      - name: "db"
+        type: "A"
+        ttl: 300
+        rrdatas: ["10.0.1.20"]
+      - name: "web"
+        type: "CNAME"
+        ttl: 300
+        rrdatas: ["api.internal.mycompany."]
+
+  # 2. Hybrid DNS: Forward queries for on-premise domains to On-Prem DNS servers
+  - name: "onprem-forwarding"
+    dns_name: "onprem.mycompany."
+    description: "Forwarding queries for on-premise resources"
+    type: "forwarding"
+    forwarding_path: "private" # Uses Cloud VPN / Interconnect
+    target_name_servers:
+      - "192.168.1.10"
+      - "192.168.1.11"
+    records: []
+
+  # 3. Restricted Google APIs Zone (Security best practice)
+  # Forces all *.googleapis.com traffic through the internal VIP 199.36.153.4/30
+  - name: "googleapis-restricted"
+    dns_name: "googleapis.com."
+    description: "Private routing for Google APIs"
+    type: "private"
+    records:
+      - name: "restricted"
+        type: "A"
+        ttl: 300
+        rrdatas:
+          - "199.36.153.4"
+          - "199.36.153.5"
+          - "199.36.153.6"
+          - "199.36.153.7"
+      - name: "*"
+        type: "CNAME"
+        ttl: 300
+        rrdatas: ["restricted.googleapis.com."]

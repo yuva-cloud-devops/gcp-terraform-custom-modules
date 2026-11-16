@@ -1,0 +1,115 @@
+project_id: yuvaraj-internal-project
+region: asia-south1
+
+tags:
+  provisioned_by: terraform
+  environment: dev
+  project: gcp-landing-zone-shared-vpc
+
+network:
+  vpcs:
+    # ==========================================================================
+    # VPC 1: Landing Zone VPC (Primary Application & GKE Workloads)
+    # ==========================================================================
+    - network_name: main-landing-zone-vpc
+      routing_mode: GLOBAL
+      description: "Primary Landing Zone Foundation VPC Network"
+
+      # Private Service Access (for Cloud SQL, Memorystore, etc.)
+      private_service_access:
+        enabled: true
+        name: platform-foundation-psa-range
+        prefix_length: 16
+        export_custom_routes: true
+        import_custom_routes: true
+
+      # Subnet Configuration
+      subnets:
+        - subnet_name: private-subnet-dev
+          subnet_ip: 10.20.1.0/24
+          subnet_region: asia-south1
+          subnet_private_access: true
+          secondary_ranges:
+            - range_name: gke-pods-dev
+              ip_cidr_range: 10.200.0.0/16
+            - range_name: gke-services-dev
+              ip_cidr_range: 10.201.0.0/20
+
+        - subnet_name: private-subnet-prod
+          subnet_ip: 10.30.1.0/24
+          subnet_region: asia-southeast1
+          subnet_private_access: true
+          secondary_ranges:
+            - range_name: gke-pods-prod
+              ip_cidr_range: 10.300.0.0/16
+            - range_name: gke-services-prod
+              ip_cidr_range: 10.301.0.0/20
+
+      # Firewall Rules
+      firewall_rules:
+        ingress:
+          - name: allow-iap-ssh
+            source_ranges:
+              - 35.235.240.0/20
+            target_tags:
+              - allow-iap-ssh
+            ports:
+              - "22"
+
+          - name: allow-health-check
+            source_ranges:
+              - 130.211.0.0/22
+              - 35.191.0.0/16
+            target_tags:
+              - allow-health-check
+            ports:
+              - "8080"
+
+          - name: allow-load-balancer
+            source_ranges:
+              - 130.211.0.0/22
+              - 35.191.0.0/16
+            target_tags:
+              - allow-web
+            ports:
+              - "80"
+              - "443"
+              - "8080"
+
+        egress:
+          - name: allow-internet
+            destination_ranges:
+              - 0.0.0.0/0
+            ports:
+              - "80"
+              - "443"
+
+      # Cloud Routers for VPC 1
+      router:
+        - name: cloud-router-dev
+          region: asia-south1
+          bgp:
+            asn: "65001"
+            advertise_mode: DEFAULT
+            keepalive_interval: 20
+
+        - name: cloud-router-prod
+          region: asia-southeast1
+          bgp:
+            asn: "65002"
+            advertise_mode: CUSTOM
+            advertised_groups:
+              - ALL_SUBNETS
+            advertised_ip_ranges:
+              - range: 10.30.1.0/24
+                description: "prod Primary Subnet"
+
+      # Cloud NATs for VPC 1
+      nat:
+        - name: cloud-nat-dev
+          region: asia-south1
+          router_name: cloud-router-dev
+
+        - name: cloud-nat-prod
+          region: asia-southeast1
+          router_name: cloud-router-prod

@@ -1,0 +1,31 @@
+# ==============================================================================
+# VPC NETWORK PEERINGS CONFIGURATION
+# ==============================================================================
+# Declares peering relationships between VPC networks.
+# Supports automated bi-directional handshakes and external partner peerings.
+# ==============================================================================
+
+peerings:
+  # ----------------------------------------------------------------------------
+  # Scenario 1: Bi-directional peering (Internal Hub to Spoke / Analytics VPC)
+  # Automatically provisions the return connection for instant ACTIVE status.
+  # ----------------------------------------------------------------------------
+  - name: "peering-hub-to-spoke"
+    peer_network_self_link: "projects/yuvaraj-internal-project/global/networks/peering-demo-spoke-vpc"
+    auto_create_reverse_peering: true
+    export_custom_routes: true
+    import_custom_routes: false
+    export_subnet_routes_with_public_ip: false
+    import_subnet_routes_with_public_ip: false
+
+  # ----------------------------------------------------------------------------
+  # Scenario 2: Uni-directional peering (External partner or vendor managed VPC)
+  # Remote vendor configures their own return connection independently.
+  # ----------------------------------------------------------------------------
+  - name: "peering-hub-to-vendor"
+    peer_network_self_link: "projects/vendor-corp-net/global/networks/vpc-vendor"
+    auto_create_reverse_peering: false
+    export_custom_routes: false
+    import_custom_routes: true
+    export_subnet_routes_with_public_ip: false
+    import_subnet_routes_with_public_ip: false

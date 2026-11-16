@@ -1,0 +1,30 @@
+project_id: "yuvaraj-internal-project"
+
+# ------------------------------------------------------------------------------
+# 1. PSC FOR GOOGLE APIS (Global Endpoint)
+# Access all Google APIs via a single private IP in your VPC
+# ------------------------------------------------------------------------------
+google_apis_endpoints:
+  - name: "psc-google-apis"
+    ip_address: "10.20.0.100" # Static internal IP reserved for Google APIs
+    target: "all-apis" # Options: "all-apis" or "vpc-sc" (for strict perimeters)
+    description: "Private endpoint for Google Cloud APIs"
+
+# ------------------------------------------------------------------------------
+# 2. PSC FOR SERVICE ATTACHMENTS (Regional SaaS / Producer Endpoints)
+# Connect to Snowflake, Databricks, MongoDB Atlas, or internal microservices
+# ------------------------------------------------------------------------------
+service_attachment_endpoints:
+  - name: "psc-snowflake-prod"
+    region: "asia-south1"
+    subnet_name: "psc-demo-subnet"
+    target_service_attachment: "projects/snowflake-prod-host/regions/asia-south1/serviceAttachments/snowflake-sa"
+    ip_address: "10.20.1.105" # Static IP within subnet CIDR
+    description: "Private connection to Snowflake warehouse"
+
+  - name: "psc-mongodb-atlas"
+    region: "asia-south1"
+    subnet_name: "psc-demo-subnet"
+    target_service_attachment: "projects/mongodb-atlas-host/regions/asia-south1/serviceAttachments/atlas-sa"
+    ip_address: null # Auto-allocates an available IP from the subnet
+    description: "Private connection to MongoDB Atlas"
