@@ -171,13 +171,14 @@ sub_folders:
 ```
 
 ### 5. Projects, Service Accounts & Deletion Liens
-Dynamic project factory handling API activation, automated tag bindings, default service account deprivileging, custom workload service accounts, and accidental deletion prevention:
+Dynamic project factory handling API activation, automated tag bindings, default VPC suppression, default service account deprivileging, custom workload service accounts, and accidental deletion prevention:
 ```yaml
 projects:
   - name: "ecommerce-api"
     prefix: "acme-dev"
     target_folder: "development"
     random_id: true
+    auto_create_network: false          # Suppress default VPC (CIS recommended)
     deprivilege_default_sa: true
     lien: false
     apis:
@@ -199,6 +200,7 @@ projects:
     prefix: "acme-prod"
     target_folder: "production"
     random_id: true
+    auto_create_network: false          # Suppress default VPC (CIS recommended)
     deprivilege_default_sa: true
     lien: true                          # Hard deletion lien enabled
     apis:
@@ -268,13 +270,15 @@ terraform output
 
 ## Security & Governance Guardrails
 
-1. **Default Service Account Deprivileging:**
+1. **Default VPC Suppression (`auto_create_network: false`):**
+   By setting `auto_create_network: false`, projects are initialized without the legacy `default` network, avoiding automatic creation of 10.128.0.0/9 subnets in all regions and eliminating default-allow ingress firewall rules.
+2. **Default Service Account Deprivileging:**
    When `deprivilege_default_sa: true` is configured, the module automatically strips the overly permissive default `roles/editor` role from Compute Engine default service accounts (`{project_number}-compute@developer.gserviceaccount.com`).
-2. **Accidental Deletion Liens:**
+3. **Accidental Deletion Liens:**
    Production workloads configure `lien: true`, establishing a `resourcemanager.projects.delete` lock. The project cannot be deleted via the Cloud Console, gcloud CLI, or Terraform until the lien is intentionally removed.
-3. **Additive Non-Authoritative IAM:**
+4. **Additive Non-Authoritative IAM:**
    All folder and project IAM policies are defined via `google_*_iam_member` resources, preventing accidental destruction of preexisting permissions, break-glass admin bindings, or Google-managed service identities.
-4. **Cryptographic Tag Integrity:**
+5. **Cryptographic Tag Integrity:**
    Tag keys and tag values are anchored at the organization level, allowing downstream security teams to enforce Organization Policy Constraints (e.g., denying external IPs on projects tagged `environment/prod`).
 
 ---

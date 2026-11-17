@@ -6,6 +6,7 @@
 # - Automatic association with the specified GCP Billing Account
 # - Target folder placement (top-level or sub-folder)
 # - Metadata labels for FinOps and cost attribution
+# - Configurable default VPC suppression ('auto_create_network', default: false)
 # - Project deletion protection (PREVENT) to prevent accidental loss
 # ==============================================================================
 
@@ -33,10 +34,11 @@ resource "google_project" "projects" {
     "${each.value.prefix}-${each.value.name}${lookup(each.value, "random_id", true) ? "-${random_string.project_suffix[each.key].result}" : ""}" :
     "${each.value.name}${lookup(each.value, "random_id", true) ? "-${random_string.project_suffix[each.key].result}" : ""}"
   )
-  folder_id       = local.all_folders[each.value.target_folder]
-  billing_account = local.config.billing_account_id
-  labels          = lookup(each.value, "labels", {})
-  deletion_policy = "PREVENT"
+  folder_id           = local.all_folders[each.value.target_folder]
+  billing_account     = local.config.billing_account_id
+  labels              = lookup(each.value, "labels", {})
+  auto_create_network = lookup(each.value, "auto_create_network", false)
+  deletion_policy     = "PREVENT"
 
   depends_on = [google_folder.top, google_folder.sub]
 }

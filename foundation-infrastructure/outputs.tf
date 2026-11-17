@@ -21,12 +21,13 @@ output "folders" {
 # ==============================================================================
 
 output "projects" {
-  description = "Summary map of created projects including project ID, number, and folder ID"
+  description = "Summary map of created projects including project ID, number, folder ID, and default network status"
   value = {
     for k, p in google_project.projects : k => {
-      id     = p.project_id
-      number = p.number
-      folder = p.folder_id
+      id                  = p.project_id
+      number              = p.number
+      folder              = p.folder_id
+      auto_create_network = p.auto_create_network
     }
   }
 }

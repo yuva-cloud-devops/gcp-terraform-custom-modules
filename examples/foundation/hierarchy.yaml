@@ -82,6 +82,7 @@ projects:
     prefix: "acme-dev"
     target_folder: "development"
     random_id: true
+    auto_create_network: false          # Do not create the default VPC network (SecOps best practice)
     deprivilege_default_sa: true
     lien: false                         # Dev project: no hard deletion lien
     apis:
@@ -116,6 +117,7 @@ projects:
     prefix: "acme-prod"
     target_folder: "production"
     random_id: true
+    auto_create_network: false          # Do not create the default VPC network (SecOps best practice)
     deprivilege_default_sa: true
     lien: true                          # Prod project: HARD DELETION LIEN ACTIVE
     apis:

@@ -77,6 +77,7 @@ flowchart TD
 4. **Enterprise Project Factory (`3-projects.tf` & `0-locals.tf`)**:
    - Automated project provisioning placed under designated target folders.
    - Built-in naming conventions: configurable prefix, base name, and optional randomized 4-character suffix (`random_string.project_suffix`) to ensure global project ID uniqueness.
+   - Configurable default VPC suppression (`auto_create_network: false`, default: `false`) to eliminate insecure legacy default networks and subnets.
    - Automatic billing account association.
    - Metadata labels for FinOps and organizational cost center attribution.
    - Config-level deletion protection (`deletion_policy = "PREVENT"`) to avoid accidental loss.
@@ -143,7 +144,7 @@ flowchart TD
 |---|---|---|
 | `organization_id` | Target GCP Organization ID specified in configuration. | `string` |
 | `folders` | Lookup map from folder display name to GCP resource ID (e.g. `'workloads' => 'folders/123456789012'`). | `map(string)` |
-| `projects` | Summary map of created projects including project `id`, `number`, and parent `folder`. | `map(object)` |
+| `projects` | Summary map of created projects including project `id`, `number`, parent `folder`, and `auto_create_network` status. | `map(object)` |
 | `service_accounts` | Map of created custom service accounts (keyed as `'<project_name>-<account_id>'`) to their generated email addresses. | `map(string)` |
 | `tag_keys` | Lookup map of created Resource Tag keys to their GCP resource IDs. | `map(string)` |
 | `tag_values` | Lookup map of created Resource Tag values to their GCP resource IDs. | `map(string)` |
@@ -240,6 +241,7 @@ projects:
     prefix: "acme-dev"                 # Prefix for project ID (e.g. acme-dev-ecommerce-api-xxxx)
     target_folder: "development"        # Target folder name
     random_id: true                    # Append 4-char random string (default: true)
+    auto_create_network: false         # Suppress default VPC creation (default: false, CIS recommended)
     deprivilege_default_sa: true       # Strip Editor role from default Compute SA (default: true)
     lien: false                        # Dev project: no hard deletion lien
     apis:                              # APIs to activate
@@ -274,6 +276,7 @@ projects:
     prefix: "acme-prod"
     target_folder: "production"
     random_id: true
+    auto_create_network: false         # Suppress default VPC creation (default: false, CIS recommended)
     deprivilege_default_sa: true
     lien: true                         # Production project: HARD DELETION LIEN ACTIVE
     apis:
@@ -332,6 +335,7 @@ output "tag_keys" {
 
 ## Security, Governance & FinOps Best Practices
 
+- **Default VPC Network Suppression (`auto_create_network: false`)**: By default, the module explicitly disables creation of the legacy Google Cloud `default` network. This prevents automatic provisioning of pre-created subnets across all GCP regions and eliminates insecure legacy firewall rules (`default-allow-internal`, `default-allow-ssh`, `default-allow-rdp`, `default-allow-icmp`), enforcing CIS GCP Foundations Benchmark compliance and custom VPC architectures.
 - **Resource Manager Liens**: Critical projects (e.g. production) are locked with `google_resource_manager_lien` (`lien: true`), creating a hard barrier against deletion from any interface until explicitly removed by an authorized administrator.
 - **Cryptographic Tags vs. Labels**: Labels are soft metadata mutable by project editors, whereas Resource Manager Tags are managed at the organization level, enabling secure Attribute-Based Access Control (ABAC) and Organization Policy restrictions (e.g., restricting VM public IPs based on `environment/prod`).
 - **Compute Engine SA Hardening**: Broad `roles/editor` access is automatically stripped via `google_project_default_service_accounts.deprivilege`, preventing VMs from inheriting unrestricted project privileges.
