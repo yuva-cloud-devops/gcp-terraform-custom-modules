@@ -26,6 +26,12 @@ locals {
   ])
 
   # ----------------------------------------------------------------------------
+  # Organization Policies (Boolean Constraints)
+  # ----------------------------------------------------------------------------
+  # Extracts optional organization-level boolean policy constraints
+  org_boolean_policies = lookup(lookup(local.config, "org_policies", {}), "boolean_policies", [])
+
+  # ----------------------------------------------------------------------------
   # Folders Lookup Map
   # ----------------------------------------------------------------------------
   # Merges top-level and sub-folder resource references into a unified lookup map

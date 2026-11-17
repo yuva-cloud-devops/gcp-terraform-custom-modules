@@ -18,6 +18,11 @@ output "service_accounts" {
   value       = module.foundation_infrastructure.service_accounts
 }
 
+output "org_policies" {
+  description = "Provisioned Organization Policies"
+  value       = module.foundation_infrastructure.org_policies
+}
+
 output "tag_keys" {
   description = "Resource Tag Key IDs"
   value       = module.foundation_infrastructure.tag_keys

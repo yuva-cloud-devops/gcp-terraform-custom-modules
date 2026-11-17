@@ -18,7 +18,7 @@ flowchart TD
     Locals --> Contacts["10-governance.tf<br/>google_essential_contacts_contact<br/>(Security, Technical & Billing Alerts)"]
     Locals --> Tags["10-governance.tf<br/>google_tags_tag_key &<br/>google_tags_tag_value<br/>(Cryptographic Org Tags)"]
 
-    Locals --> OrgIAM["1-org-iam.tf<br/>google_organization_iam_member"]
+    Locals --> OrgIAM["1-org-iam.tf<br/>google_organization_iam_member &<br/>google_org_policy_policy (Org Policies)"]
     Locals --> TopFolders["2-folders.tf<br/>google_folder (Top-Level)"]
     TopFolders --> SubFolders["2-folders.tf<br/>google_folder (Sub-Folders)"]
 
@@ -72,28 +72,31 @@ flowchart TD
 2. **Organization Governance & Essential Contacts (`10-governance.tf`)**:
    - Centralizes Google Cloud notifications for security, billing, and incident response by routing alerts to verified organizational contacts and distribution lists.
    - Creates centralized **Resource Manager Tag Keys & Tag Values** at the organization root. Unlike metadata labels, cryptographic tags cannot be tampered with by project-level users and can be evaluated in IAM conditions and Organization Policies.
-3. **Multi-Tier Folder Architecture (`2-folders.tf`)**:
+3. **Organization Policies Guardrails (`1-org-iam.tf`)**:
+   - Enforce organization-wide governance constraints dynamically via the Google Cloud **Organization Policy API V2** (`google_org_policy_policy`).
+   - Declaratively enforce boolean constraints (such as `compute.skipDefaultNetworkCreation` to block automatic default VPC creation org-wide, `iam.disableServiceAccountKeyCreation`, etc.) directly from YAML.
+4. **Multi-Tier Folder Architecture (`2-folders.tf`)**:
    - Automated creation of top-level folders parented by the GCP Organization and nested sub-folders parented by top-level folders.
-4. **Enterprise Project Factory (`3-projects.tf` & `0-locals.tf`)**:
+5. **Enterprise Project Factory (`3-projects.tf` & `0-locals.tf`)**:
    - Automated project provisioning placed under designated target folders.
    - Built-in naming conventions: configurable prefix, base name, and optional randomized 4-character suffix (`random_string.project_suffix`) to ensure global project ID uniqueness.
    - Configurable default VPC suppression (`auto_create_network: false`, default: `false`) to eliminate insecure legacy default networks and subnets.
    - Automatic billing account association.
    - Metadata labels for FinOps and organizational cost center attribution.
    - Config-level deletion protection (`deletion_policy = "PREVENT"`) to avoid accidental loss.
-5. **Multi-Layer Deletion Protection & Project Liens (`8-project-lien.tf`)**:
+6. **Multi-Layer Deletion Protection & Project Liens (`8-project-lien.tf`)**:
    - Optional `lien: true` applies a **GCP Resource Manager Lien** (`resourcemanager.projects.delete`), enforcing hard deletion protection that physically blocks project deletion in the Google Cloud Console, gcloud CLI, or API calls until the lien is deliberately removed.
-6. **Cryptographic Tag Bindings (`9-resource-tag-binding.tf`)**:
+7. **Cryptographic Tag Bindings (`9-resource-tag-binding.tf`)**:
    - Attaches organization-level tag values directly to provisioned projects, unlocking Attribute-Based Access Control (ABAC), fine-grained IAM conditions, and organization policy inheritance.
-7. **Security Hardening by Default (`4-iam.tf`)**:
+8. **Security Hardening by Default (`4-iam.tf`)**:
    - **Deprivilege Default Service Accounts**: Automatically removes the default over-privileged `roles/editor` binding from the default Compute Engine service account (`{project_number}-compute@developer.gserviceaccount.com`), enforcing least-privilege baselines across all new projects.
-8. **Granular IAM with CEL Conditions (`1-org-iam.tf`, `4-iam.tf`, `6-users-groups.tf`)**:
+9. **Granular IAM with CEL Conditions (`1-org-iam.tf`, `4-iam.tf`, `6-users-groups.tf`)**:
    - Non-authoritative IAM member bindings across Organization, Folders, and Projects.
    - Full support for Common Expression Language (CEL) IAM conditions (e.g., time-bound temporary access, IP constraints, resource tags).
-9. **Dynamic API & Service Enablement (`5-apis.tf`)**:
-   - Project-by-project API activation.
-   - Safe destroy protection: sets `disable_on_destroy = false` and `disable_dependent_services = false` to prevent unexpected service disruption during configuration changes.
-10. **Custom Workload Service Accounts (`7-custom-service-accounts.tf`)**:
+10. **Dynamic API & Service Enablement (`5-apis.tf`)**:
+    - Project-by-project API activation.
+    - Safe destroy protection: sets `disable_on_destroy = false` and `disable_dependent_services = false` to prevent unexpected service disruption during configuration changes.
+11. **Custom Workload Service Accounts (`7-custom-service-accounts.tf`)**:
     - Provisions dedicated service accounts per project for application workloads, Google Kubernetes Engine (GKE) Workload Identity, or CI/CD pipelines.
     - Automatically binds specified IAM roles to custom service accounts within their target project.
 
@@ -104,7 +107,7 @@ flowchart TD
 | File | Purpose | Managed Resources |
 |---|---|---|
 | [`0-locals.tf`](./0-locals.tf) | YAML configuration parsing, data transformation, and schema flattening pipeline | Local variables & collections |
-| [`1-org-iam.tf`](./1-org-iam.tf) | Organization-level IAM member bindings | `google_organization_iam_member.org` |
+| [`1-org-iam.tf`](./1-org-iam.tf) | Organization-level IAM member bindings and Organization Policy V2 guardrails | `google_organization_iam_member.org`, `google_org_policy_policy.boolean_policies` |
 | [`2-folders.tf`](./2-folders.tf) | Top-level folders and nested sub-folder hierarchy | `google_folder.top`, `google_folder.sub` |
 | [`3-projects.tf`](./3-projects.tf) | Project Factory creating projects with billing, prefix, and random suffix | `random_string.project_suffix`, `google_project.projects` |
 | [`4-iam.tf`](./4-iam.tf) | Folder IAM bindings with CEL conditions & default SA deprivileging | `google_folder_iam_member.folders`, `google_project_default_service_accounts.deprivilege` |
@@ -146,6 +149,7 @@ flowchart TD
 | `folders` | Lookup map from folder display name to GCP resource ID (e.g. `'workloads' => 'folders/123456789012'`). | `map(string)` |
 | `projects` | Summary map of created projects including project `id`, `number`, parent `folder`, and `auto_create_network` status. | `map(object)` |
 | `service_accounts` | Map of created custom service accounts (keyed as `'<project_name>-<account_id>'`) to their generated email addresses. | `map(string)` |
+| `org_policies` | Map of provisioned Organization Policies keyed by constraint name. | `map(object)` |
 | `tag_keys` | Lookup map of created Resource Tag keys to their GCP resource IDs. | `map(string)` |
 | `tag_values` | Lookup map of created Resource Tag values to their GCP resource IDs. | `map(string)` |
 
@@ -183,7 +187,15 @@ tags:
     values: ["public", "internal", "restricted"]
 
 # ------------------------------------------------------------------------------
-# 3. ROOT ORGANIZATION IAM
+# 3. ORGANIZATION POLICIES (Org-wide Governance Guardrails)
+# ------------------------------------------------------------------------------
+org_policies:
+  boolean_policies:
+    - constraint: "compute.skipDefaultNetworkCreation"
+      enforce: true
+
+# ------------------------------------------------------------------------------
+# 4. ROOT ORGANIZATION IAM
 # ------------------------------------------------------------------------------
 organization_iam:
   - role: "roles/resourcemanager.organizationAdmin"
@@ -197,7 +209,7 @@ organization_iam:
       - "group:secops-auditors@mycompany.com"
 
 # ------------------------------------------------------------------------------
-# 4. TOP-LEVEL FOLDERS (Parent: Organization Root)
+# 5. TOP-LEVEL FOLDERS (Parent: Organization Root)
 # ------------------------------------------------------------------------------
 top_level_folders:
   - name: "core"
@@ -212,7 +224,7 @@ top_level_folders:
     iam: []
 
 # ------------------------------------------------------------------------------
-# 5. SUB-FOLDERS (Parent: Designated top_level_folder)
+# 6. SUB-FOLDERS (Parent: Designated top_level_folder)
 # ------------------------------------------------------------------------------
 sub_folders:
   - name: "development"
@@ -234,7 +246,7 @@ sub_folders:
         members: ["group:sre-team@mycompany.com"]
 
 # ------------------------------------------------------------------------------
-# 6. DYNAMIC PROJECTS (Project Factory)
+# 7. DYNAMIC PROJECTS (Project Factory)
 # ------------------------------------------------------------------------------
 projects:
   - name: "ecommerce-api"
@@ -335,7 +347,8 @@ output "tag_keys" {
 
 ## Security, Governance & FinOps Best Practices
 
-- **Default VPC Network Suppression (`auto_create_network: false`)**: By default, the module explicitly disables creation of the legacy Google Cloud `default` network. This prevents automatic provisioning of pre-created subnets across all GCP regions and eliminates insecure legacy firewall rules (`default-allow-internal`, `default-allow-ssh`, `default-allow-rdp`, `default-allow-icmp`), enforcing CIS GCP Foundations Benchmark compliance and custom VPC architectures.
+- **Organization Policy Guardrails (`google_org_policy_policy`)**: Dynamic management of organization-level policies using Organization Policy API V2 enforces centralized guardrails (such as `compute.skipDefaultNetworkCreation` to block legacy default networks at the organization root, `iam.disableServiceAccountKeyCreation`, etc.) directly from declarative YAML.
+- **Default VPC Network Suppression (`auto_create_network: false`)**: By default, the module explicitly disables creation of the legacy Google Cloud `default` network at the project level. This prevents automatic provisioning of pre-created subnets across all GCP regions and eliminates insecure legacy firewall rules (`default-allow-internal`, `default-allow-ssh`, `default-allow-rdp`, `default-allow-icmp`), enforcing CIS GCP Foundations Benchmark compliance and custom VPC architectures.
 - **Resource Manager Liens**: Critical projects (e.g. production) are locked with `google_resource_manager_lien` (`lien: true`), creating a hard barrier against deletion from any interface until explicitly removed by an authorized administrator.
 - **Cryptographic Tags vs. Labels**: Labels are soft metadata mutable by project editors, whereas Resource Manager Tags are managed at the organization level, enabling secure Attribute-Based Access Control (ABAC) and Organization Policy restrictions (e.g., restricting VM public IPs based on `environment/prod`).
 - **Compute Engine SA Hardening**: Broad `roles/editor` access is automatically stripped via `google_project_default_service_accounts.deprivilege`, preventing VMs from inheriting unrestricted project privileges.

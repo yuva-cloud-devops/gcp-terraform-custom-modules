@@ -19,9 +19,10 @@ All organizational components—including **Essential Contacts**, cryptographic 
 - [Declarative YAML Configuration](#declarative-yaml-configuration)
   - [1. Essential Contacts](#1-essential-contacts)
   - [2. Resource Tags (Org-Level ABAC)](#2-resource-tags-org-level-abac)
-  - [3. Root Organization IAM](#3-root-organization-iam)
-  - [4. Folder Hierarchy & CEL IAM Conditions](#4-folder-hierarchy--cel-iam-conditions)
-  - [5. Projects, Service Accounts & Deletion Liens](#5-projects-service-accounts--deletion-liens)
+  - [3. Organization Policies (Org-Wide Guardrails)](#3-organization-policies-org-wide-guardrails)
+  - [4. Root Organization IAM](#4-root-organization-iam)
+  - [5. Folder Hierarchy & CEL IAM Conditions](#5-folder-hierarchy--cel-iam-conditions)
+  - [6. Projects, Service Accounts & Deletion Liens](#6-projects-service-accounts--deletion-liens)
 - [Deployment Workflow](#deployment-workflow)
   - [Step 1: Authenticate to GCP](#step-1-authenticate-to-gcp)
   - [Step 2: Update Configuration IDs](#step-2-update-configuration-ids)
@@ -43,6 +44,7 @@ flowchart TD
     subgraph ORG["GCP Organization: 123456789012"]
         EC["Essential Contacts<br/>- cloud-security@mycompany.com<br/>- finops-leads@mycompany.com"]
         TAGS["Resource Tags (Keys & Values)<br/>- environment (dev, staging, prod)<br/>- data_classification (public, internal, restricted)"]
+        POLICIES["Organization Policies<br/>- compute.skipDefaultNetworkCreation: Enforced"]
         ORG_IAM["Organization IAM Roles<br/>- organizationAdmin<br/>- billing.admin<br/>- securityReviewer"]
         
         subgraph TLF["Top-Level Folders"]
@@ -137,7 +139,16 @@ tags:
     values: ["public", "internal", "restricted"]
 ```
 
-### 3. Root Organization IAM
+### 3. Organization Policies (Org-Wide Guardrails)
+Enforces organization-wide security baselines via Organization Policy API V2 (`google_org_policy_policy`), such as disabling automatic creation of default VPCs across all new projects:
+```yaml
+org_policies:
+  boolean_policies:
+    - constraint: "compute.skipDefaultNetworkCreation"
+      enforce: true
+```
+
+### 4. Root Organization IAM
 Grants enterprise administrator and auditor access using non-authoritative `google_organization_iam_member` resources to avoid overriding default organizational policies:
 ```yaml
 organization_iam:
@@ -152,7 +163,7 @@ organization_iam:
       - "group:secops-auditors@mycompany.com"
 ```
 
-### 4. Folder Hierarchy & CEL IAM Conditions
+### 5. Folder Hierarchy & CEL IAM Conditions
 Folder isolation cleanly separates environments. Supports Common Expression Language (CEL) conditions for temporary or conditional access:
 ```yaml
 sub_folders:
@@ -170,7 +181,7 @@ sub_folders:
           expression: 'request.time < timestamp("2026-12-31T23:59:59Z")'
 ```
 
-### 5. Projects, Service Accounts & Deletion Liens
+### 6. Projects, Service Accounts & Deletion Liens
 Dynamic project factory handling API activation, automated tag bindings, default VPC suppression, default service account deprivileging, custom workload service accounts, and accidental deletion prevention:
 ```yaml
 projects:
@@ -258,6 +269,7 @@ Once applied, the configuration exposes key metadata for downstream pipeline con
 | `folders` | `map(string)` | Map of folder names to their full GCP Resource IDs (`folders/XXXXX`). |
 | `projects` | `map(object)` | Detailed summary of created projects including project IDs, numbers, and target folders. |
 | `service_accounts` | `map(string)` | Map of generated custom service account IDs to their fully qualified email addresses. |
+| `org_policies` | `map(object)` | Map of provisioned Organization Policies keyed by constraint name. |
 | `tag_keys` | `map(string)` | Map of created Tag Keys to their Resource Manager IDs (`tagKeys/XXXXX`). |
 | `tag_values` | `map(string)` | Map of created Tag Values to their Resource Manager IDs (`tagValues/XXXXX`). |
 
@@ -270,15 +282,17 @@ terraform output
 
 ## Security & Governance Guardrails
 
-1. **Default VPC Suppression (`auto_create_network: false`):**
+1. **Organization Policy Enforcement (`google_org_policy_policy`):**
+   Centrally manages and enforces organization-wide security guardrails via declarative YAML (`org_policies.boolean_policies`). For example, enforcing `compute.skipDefaultNetworkCreation` ensures that no project in the entire organization can automatically spawn the default VPC network and its permissive firewall rules.
+2. **Default VPC Suppression (`auto_create_network: false`):**
    By setting `auto_create_network: false`, projects are initialized without the legacy `default` network, avoiding automatic creation of 10.128.0.0/9 subnets in all regions and eliminating default-allow ingress firewall rules.
-2. **Default Service Account Deprivileging:**
+3. **Default Service Account Deprivileging:**
    When `deprivilege_default_sa: true` is configured, the module automatically strips the overly permissive default `roles/editor` role from Compute Engine default service accounts (`{project_number}-compute@developer.gserviceaccount.com`).
-3. **Accidental Deletion Liens:**
+4. **Accidental Deletion Liens:**
    Production workloads configure `lien: true`, establishing a `resourcemanager.projects.delete` lock. The project cannot be deleted via the Cloud Console, gcloud CLI, or Terraform until the lien is intentionally removed.
-4. **Additive Non-Authoritative IAM:**
+5. **Additive Non-Authoritative IAM:**
    All folder and project IAM policies are defined via `google_*_iam_member` resources, preventing accidental destruction of preexisting permissions, break-glass admin bindings, or Google-managed service identities.
-5. **Cryptographic Tag Integrity:**
+6. **Cryptographic Tag Integrity:**
    Tag keys and tag values are anchored at the organization level, allowing downstream security teams to enforce Organization Policy Constraints (e.g., denying external IPs on projects tagged `environment/prod`).
 
 ---

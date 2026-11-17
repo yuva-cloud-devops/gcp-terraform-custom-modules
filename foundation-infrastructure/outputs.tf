@@ -47,6 +47,17 @@ output "service_accounts" {
 # 4. GOVERNANCE & RESOURCE TAG OUTPUTS
 # ==============================================================================
 
+output "org_policies" {
+  description = "Lookup map of provisioned Organization Policies keyed by constraint name"
+  value = {
+    for k, p in google_org_policy_policy.boolean_policies : k => {
+      id     = p.id
+      name   = p.name
+      parent = p.parent
+    }
+  }
+}
+
 output "tag_keys" {
   description = "Lookup map of created Resource Tag keys to their GCP resource IDs"
   value       = { for k, v in google_tags_tag_key.keys : k => v.id }

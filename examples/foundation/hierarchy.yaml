@@ -24,7 +24,15 @@ tags:
     values: ["public", "internal", "restricted"]
 
 # ------------------------------------------------------------------------------
-# 3. ROOT ORGANIZATION IAM
+# 3. ORGANIZATION POLICIES (Org-wide Governance Guardrails)
+# ------------------------------------------------------------------------------
+org_policies:
+  boolean_policies:
+    - constraint: "compute.skipDefaultNetworkCreation"
+      enforce: true
+
+# ------------------------------------------------------------------------------
+# 4. ROOT ORGANIZATION IAM
 # ------------------------------------------------------------------------------
 organization_iam:
   - role: "roles/resourcemanager.organizationAdmin"
@@ -38,7 +46,7 @@ organization_iam:
       - "group:secops-auditors@mycompany.com"
 
 # ------------------------------------------------------------------------------
-# 4. TOP-LEVEL FOLDERS (Parent: Organization)
+# 5. TOP-LEVEL FOLDERS (Parent: Organization)
 # ------------------------------------------------------------------------------
 top_level_folders:
   - name: "core"
@@ -53,7 +61,7 @@ top_level_folders:
     iam: []
 
 # ------------------------------------------------------------------------------
-# 5. SUB-FOLDERS (Parent: One of top_level_folders)
+# 6. SUB-FOLDERS (Parent: One of top_level_folders)
 # ------------------------------------------------------------------------------
 sub_folders:
   - name: "development"
@@ -75,7 +83,7 @@ sub_folders:
         members: ["group:sre-team@mycompany.com"]
 
 # ------------------------------------------------------------------------------
-# 6. DYNAMIC PROJECTS
+# 7. DYNAMIC PROJECTS
 # ------------------------------------------------------------------------------
 projects:
   - name: "ecommerce-api"
