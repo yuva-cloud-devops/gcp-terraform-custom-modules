@@ -83,9 +83,9 @@ flowchart TD
    - Configurable default VPC suppression (`auto_create_network: false`, default: `false`) to eliminate insecure legacy default networks and subnets.
    - Automatic billing account association.
    - Metadata labels for FinOps and organizational cost center attribution.
-   - Config-level deletion protection (`deletion_policy = "PREVENT"`) to avoid accidental loss.
+   - Dynamic project deletion protection: `deletion_policy` is dynamically tied to the `lien` attribute (`PREVENT` when `lien: true`, `DELETE` when `lien: false`), allowing clean destruction and recreation in non-production environments while preventing accidental deletion of production workloads.
 6. **Multi-Layer Deletion Protection & Project Liens (`8-project-lien.tf`)**:
-   - Optional `lien: true` applies a **GCP Resource Manager Lien** (`resourcemanager.projects.delete`), enforcing hard deletion protection that physically blocks project deletion in the Google Cloud Console, gcloud CLI, or API calls until the lien is deliberately removed.
+   - When `lien: true` is configured, the module applies a **GCP Resource Manager Lien** (`resourcemanager.projects.delete`) alongside `deletion_policy = "PREVENT"`, creating a two-layer defense that physically blocks project deletion in the Google Cloud Console, gcloud CLI, or Terraform until the lien is intentionally removed. In dev/sandbox projects (`lien: false`), `deletion_policy` resolves to `"DELETE"`, permitting standard Terraform destruction workflows.
 7. **Cryptographic Tag Bindings (`9-resource-tag-binding.tf`)**:
    - Attaches organization-level tag values directly to provisioned projects, unlocking Attribute-Based Access Control (ABAC), fine-grained IAM conditions, and organization policy inheritance.
 8. **Security Hardening by Default (`4-iam.tf`)**:
@@ -147,7 +147,7 @@ flowchart TD
 |---|---|---|
 | `organization_id` | Target GCP Organization ID specified in configuration. | `string` |
 | `folders` | Lookup map from folder display name to GCP resource ID (e.g. `'workloads' => 'folders/123456789012'`). | `map(string)` |
-| `projects` | Summary map of created projects including project `id`, `number`, parent `folder`, and `auto_create_network` status. | `map(object)` |
+| `projects` | Summary map of created projects including project `id`, `number`, parent `folder`, `auto_create_network` status, and `deletion_policy`. | `map(object)` |
 | `service_accounts` | Map of created custom service accounts (keyed as `'<project_name>-<account_id>'`) to their generated email addresses. | `map(string)` |
 | `org_policies` | Map of provisioned Organization Policies keyed by constraint name. | `map(object)` |
 | `tag_keys` | Lookup map of created Resource Tag keys to their GCP resource IDs. | `map(string)` |

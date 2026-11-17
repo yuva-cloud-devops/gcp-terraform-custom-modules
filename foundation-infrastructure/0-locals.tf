@@ -81,10 +81,12 @@ locals {
   # Projects Map
   # ----------------------------------------------------------------------------
   # Converts the project list into a key-value map indexed by project name,
-  # normalizing default settings such as suppressing default VPC network creation.
+  # normalizing default settings such as suppressing default VPC network creation
+  # and defaulting deletion lien protection.
   projects_map = {
     for p in lookup(local.config, "projects", []) : p.name => merge(p, {
       auto_create_network = lookup(p, "auto_create_network", false)
+      lien                = lookup(p, "lien", false)
     })
   }
 

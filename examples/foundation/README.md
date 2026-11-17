@@ -288,8 +288,10 @@ terraform output
    By setting `auto_create_network: false`, projects are initialized without the legacy `default` network, avoiding automatic creation of 10.128.0.0/9 subnets in all regions and eliminating default-allow ingress firewall rules.
 3. **Default Service Account Deprivileging:**
    When `deprivilege_default_sa: true` is configured, the module automatically strips the overly permissive default `roles/editor` role from Compute Engine default service accounts (`{project_number}-compute@developer.gserviceaccount.com`).
-4. **Accidental Deletion Liens:**
-   Production workloads configure `lien: true`, establishing a `resourcemanager.projects.delete` lock. The project cannot be deleted via the Cloud Console, gcloud CLI, or Terraform until the lien is intentionally removed.
+4. **Accidental Deletion Liens & Dynamic Deletion Policy:**
+   Project deletion safety is dynamically coupled with the `lien` attribute:
+   - When `lien: true` (e.g. production), Terraform sets `deletion_policy = "PREVENT"` and provisions a `google_resource_manager_lien` (`resourcemanager.projects.delete`), creating a hard barrier against deletion across Console, gcloud CLI, and Terraform.
+   - When `lien: false` (e.g. development), Terraform sets `deletion_policy = "DELETE"` and skips the lien, allowing developers and CI/CD pipelines to cleanly destroy and recreate environments.
 5. **Additive Non-Authoritative IAM:**
    All folder and project IAM policies are defined via `google_*_iam_member` resources, preventing accidental destruction of preexisting permissions, break-glass admin bindings, or Google-managed service identities.
 6. **Cryptographic Tag Integrity:**

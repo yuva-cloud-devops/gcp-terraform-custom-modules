@@ -21,13 +21,14 @@ output "folders" {
 # ==============================================================================
 
 output "projects" {
-  description = "Summary map of created projects including project ID, number, folder ID, and default network status"
+  description = "Summary map of created projects including project ID, number, folder ID, default network status, and deletion policy"
   value = {
     for k, p in google_project.projects : k => {
       id                  = p.project_id
       number              = p.number
       folder              = p.folder_id
       auto_create_network = p.auto_create_network
+      deletion_policy     = lookup(local.projects_map[k], "lien", false) ? "PREVENT" : "DELETE"
     }
   }
 }

@@ -7,7 +7,7 @@
 # - Target folder placement (top-level or sub-folder)
 # - Metadata labels for FinOps and cost attribution
 # - Configurable default VPC suppression ('auto_create_network', default: false)
-# - Project deletion protection (PREVENT) to prevent accidental loss
+# - Dynamic project deletion policy ('deletion_policy') tied to the 'lien' attribute (PREVENT when true, DELETE when false)
 # ==============================================================================
 
 # ------------------------------------------------------------------------------
@@ -38,7 +38,7 @@ resource "google_project" "projects" {
   billing_account     = local.config.billing_account_id
   labels              = lookup(each.value, "labels", {})
   auto_create_network = lookup(each.value, "auto_create_network", false)
-  deletion_policy     = "PREVENT"
+  deletion_policy     = lookup(each.value, "lien", false) ? "PREVENT" : "DELETE"
 
   depends_on = [google_folder.top, google_folder.sub]
 }
