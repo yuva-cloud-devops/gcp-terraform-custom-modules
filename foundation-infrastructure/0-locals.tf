@@ -32,6 +32,23 @@ locals {
   org_boolean_policies = lookup(lookup(local.config, "org_policies", {}), "boolean_policies", [])
 
   # ----------------------------------------------------------------------------
+  # Top-Level & Sub-Folders Maps
+  # ----------------------------------------------------------------------------
+  # Normalizes top-level folder definitions with default deletion protection
+  top_level_folders_map = {
+    for f in lookup(local.config, "top_level_folders", []) : f.name => merge(f, {
+      deletion_protection = lookup(f, "deletion_protection", false)
+    })
+  }
+
+  # Normalizes sub-folder definitions with default deletion protection
+  sub_folders_map = {
+    for f in lookup(local.config, "sub_folders", []) : f.name => merge(f, {
+      deletion_protection = lookup(f, "deletion_protection", false)
+    })
+  }
+
+  # ----------------------------------------------------------------------------
   # Folders Lookup Map
   # ----------------------------------------------------------------------------
   # Merges top-level and sub-folder resource references into a unified lookup map

@@ -164,11 +164,12 @@ organization_iam:
 ```
 
 ### 5. Folder Hierarchy & CEL IAM Conditions
-Folder isolation cleanly separates environments. Supports Common Expression Language (CEL) conditions for temporary or conditional access:
+Folder isolation cleanly separates environments. Supports configurable deletion protection (`deletion_protection: false`) and Common Expression Language (CEL) conditions for temporary or conditional access:
 ```yaml
 sub_folders:
   - name: "development"
     parent: "workloads"
+    deletion_protection: false
     iam:
       - role: "roles/viewer"
         members: ["group:developers@mycompany.com"]
@@ -282,19 +283,21 @@ terraform output
 
 ## Security & Governance Guardrails
 
-1. **Organization Policy Enforcement (`google_org_policy_policy`):**
+1. **Configurable Folder Deletion Protection (`deletion_protection: false`):**
+   Top-level and sub-folders support explicit deletion protection toggles. Setting `deletion_protection: false` permits Terraform to destroy and recreate folders during staging and teardown cycles without throwing provider-level deletion prevention errors.
+2. **Organization Policy Enforcement (`google_org_policy_policy`):**
    Centrally manages and enforces organization-wide security guardrails via declarative YAML (`org_policies.boolean_policies`). For example, enforcing `compute.skipDefaultNetworkCreation` ensures that no project in the entire organization can automatically spawn the default VPC network and its permissive firewall rules.
-2. **Default VPC Suppression (`auto_create_network: false`):**
+3. **Default VPC Suppression (`auto_create_network: false`):**
    By setting `auto_create_network: false`, projects are initialized without the legacy `default` network, avoiding automatic creation of 10.128.0.0/9 subnets in all regions and eliminating default-allow ingress firewall rules.
-3. **Default Service Account Deprivileging:**
+4. **Default Service Account Deprivileging:**
    When `deprivilege_default_sa: true` is configured, the module automatically strips the overly permissive default `roles/editor` role from Compute Engine default service accounts (`{project_number}-compute@developer.gserviceaccount.com`).
-4. **Accidental Deletion Liens & Dynamic Deletion Policy:**
+5. **Accidental Deletion Liens & Dynamic Deletion Policy:**
    Project deletion safety is dynamically coupled with the `lien` attribute:
    - When `lien: true` (e.g. production), Terraform sets `deletion_policy = "PREVENT"` and provisions a `google_resource_manager_lien` (`resourcemanager.projects.delete`), creating a hard barrier against deletion across Console, gcloud CLI, and Terraform.
    - When `lien: false` (e.g. development), Terraform sets `deletion_policy = "DELETE"` and skips the lien, allowing developers and CI/CD pipelines to cleanly destroy and recreate environments.
-5. **Additive Non-Authoritative IAM:**
+6. **Additive Non-Authoritative IAM:**
    All folder and project IAM policies are defined via `google_*_iam_member` resources, preventing accidental destruction of preexisting permissions, break-glass admin bindings, or Google-managed service identities.
-6. **Cryptographic Tag Integrity:**
+7. **Cryptographic Tag Integrity:**
    Tag keys and tag values are anchored at the organization level, allowing downstream security teams to enforce Organization Policy Constraints (e.g., denying external IPs on projects tagged `environment/prod`).
 
 ---

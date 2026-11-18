@@ -77,6 +77,7 @@ flowchart TD
    - Declaratively enforce boolean constraints (such as `compute.skipDefaultNetworkCreation` to block automatic default VPC creation org-wide, `iam.disableServiceAccountKeyCreation`, etc.) directly from YAML.
 4. **Multi-Tier Folder Architecture (`2-folders.tf`)**:
    - Automated creation of top-level folders parented by the GCP Organization and nested sub-folders parented by top-level folders.
+   - Declarative folder deletion protection (`deletion_protection: false`, default: `false`) providing granular control over whether Terraform can delete or recreate folders during teardowns.
 5. **Enterprise Project Factory (`3-projects.tf` & `0-locals.tf`)**:
    - Automated project provisioning placed under designated target folders.
    - Built-in naming conventions: configurable prefix, base name, and optional randomized 4-character suffix (`random_string.project_suffix`) to ensure global project ID uniqueness.
@@ -108,7 +109,7 @@ flowchart TD
 |---|---|---|
 | [`0-locals.tf`](./0-locals.tf) | YAML configuration parsing, data transformation, and schema flattening pipeline | Local variables & collections |
 | [`1-org-iam.tf`](./1-org-iam.tf) | Organization-level IAM member bindings and Organization Policy V2 guardrails | `google_organization_iam_member.org`, `google_org_policy_policy.boolean_policies` |
-| [`2-folders.tf`](./2-folders.tf) | Top-level folders and nested sub-folder hierarchy | `google_folder.top`, `google_folder.sub` |
+| [`2-folders.tf`](./2-folders.tf) | Top-level folders and nested sub-folder hierarchy with configurable deletion protection | `google_folder.top`, `google_folder.sub` |
 | [`3-projects.tf`](./3-projects.tf) | Project Factory creating projects with billing, prefix, and random suffix | `random_string.project_suffix`, `google_project.projects` |
 | [`4-iam.tf`](./4-iam.tf) | Folder IAM bindings with CEL conditions & default SA deprivileging | `google_folder_iam_member.folders`, `google_project_default_service_accounts.deprivilege` |
 | [`5-apis.tf`](./5-apis.tf) | Dynamic GCP service and API enablement per project | `google_project_service.apis` |
@@ -213,14 +214,17 @@ organization_iam:
 # ------------------------------------------------------------------------------
 top_level_folders:
   - name: "core"
+    deletion_protection: false         # Allow Terraform to delete/recreate folder (default: false)
     iam:
       - role: "roles/resourcemanager.folderViewer"
         members: ["group:secops-auditors@mycompany.com"]
   - name: "workloads"
+    deletion_protection: false
     iam:
       - role: "roles/resourcemanager.folderViewer"
         members: ["group:cloud-leads@mycompany.com"]
   - name: "sandbox"
+    deletion_protection: false
     iam: []
 
 # ------------------------------------------------------------------------------
@@ -229,6 +233,7 @@ top_level_folders:
 sub_folders:
   - name: "development"
     parent: "workloads"
+    deletion_protection: false
     iam:
       - role: "roles/viewer"
         members: ["group:developers@mycompany.com"]
@@ -241,6 +246,7 @@ sub_folders:
           expression: 'request.time < timestamp("2026-12-31T23:59:59Z")'
   - name: "production"
     parent: "workloads"
+    deletion_protection: false
     iam:
       - role: "roles/viewer"
         members: ["group:sre-team@mycompany.com"]
@@ -347,6 +353,7 @@ output "tag_keys" {
 
 ## Security, Governance & FinOps Best Practices
 
+- **Folder Deletion Protection (`deletion_protection`)**: Configurable on both top-level and sub-folders. Setting `deletion_protection: false` allows automated CI/CD and sandbox environments to tear down and recreate folders seamlessly, whereas setting it to `true` (or omitting it in strict environments) prevents accidental destruction via Terraform.
 - **Organization Policy Guardrails (`google_org_policy_policy`)**: Dynamic management of organization-level policies using Organization Policy API V2 enforces centralized guardrails (such as `compute.skipDefaultNetworkCreation` to block legacy default networks at the organization root, `iam.disableServiceAccountKeyCreation`, etc.) directly from declarative YAML.
 - **Default VPC Network Suppression (`auto_create_network: false`)**: By default, the module explicitly disables creation of the legacy Google Cloud `default` network at the project level. This prevents automatic provisioning of pre-created subnets across all GCP regions and eliminates insecure legacy firewall rules (`default-allow-internal`, `default-allow-ssh`, `default-allow-rdp`, `default-allow-icmp`), enforcing CIS GCP Foundations Benchmark compliance and custom VPC architectures.
 - **Resource Manager Liens**: Critical projects (e.g. production) are locked with `google_resource_manager_lien` (`lien: true`), creating a hard barrier against deletion from any interface until explicitly removed by an authorized administrator.

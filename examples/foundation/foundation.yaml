@@ -50,14 +50,17 @@ organization_iam:
 # ------------------------------------------------------------------------------
 top_level_folders:
   - name: "core"
+    deletion_protection: false
     iam:
       - role: "roles/resourcemanager.folderViewer"
         members: ["group:secops-auditors@mycompany.com"]
   - name: "workloads"
+    deletion_protection: false
     iam:
       - role: "roles/resourcemanager.folderViewer"
         members: ["group:cloud-leads@mycompany.com"]
   - name: "sandbox"
+    deletion_protection: false
     iam: []
 
 # ------------------------------------------------------------------------------
@@ -66,6 +69,7 @@ top_level_folders:
 sub_folders:
   - name: "development"
     parent: "workloads"
+    deletion_protection: false
     iam:
       - role: "roles/viewer"
         members: ["group:developers@mycompany.com"]
@@ -78,6 +82,7 @@ sub_folders:
           expression: 'request.time < timestamp("2026-12-31T23:59:59Z")'
   - name: "production"
     parent: "workloads"
+    deletion_protection: false
     iam:
       - role: "roles/viewer"
         members: ["group:sre-team@mycompany.com"]
