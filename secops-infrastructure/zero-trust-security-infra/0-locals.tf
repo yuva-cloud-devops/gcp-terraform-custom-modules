@@ -4,6 +4,7 @@
 # Parses the YAML configuration and flattens Workload Identity Federation (WIF)
 # pools, OIDC/AWS providers, dedicated Service Accounts, and Identity-Aware Proxy
 # (IAP) TCP tunneling & Web HTTPS access rules for Terraform 'for_each' iteration.
+# Supports both map-based (idiomatic key-value) and list-based YAML structures.
 # ==============================================================================
 
 locals {
@@ -16,44 +17,66 @@ locals {
     )
   )
 
+  # Support optional wrapper root key "zero_trust_security" or "zero_trust"
+  raw_root = try(local.raw_config.zero_trust_security, try(local.raw_config.zero_trust, local.raw_config))
+
   # Top-level global defaults
-  default_project_id = try(local.raw_config.project_id, null)
-  common_labels      = try(local.raw_config.common_labels, {})
+  default_project_id = try(local.raw_root.project_id, null)
+  common_labels      = try(local.raw_root.common_labels, {})
 
   # ----------------------------------------------------------------------------
   # 1. Workload Identity Federation (WIF) Pools & Providers
   # ----------------------------------------------------------------------------
-  raw_wif = try(local.raw_config.workload_identity_federation, local.raw_config.wif, {})
+  # Supports:
+  # - workload_identity_pools: { pool-key: { ... } }
+  # - workload_identity_pools: [ { pool_id: "...", ... } ]
+  # - workload_identity_federation.pools
+  raw_pools_input = try(
+    local.raw_root.workload_identity_pools,
+    try(
+      local.raw_root.workload_identity_federation.pools,
+      try(local.raw_root.wif.pools, {})
+    )
+  )
 
-  # Pools Map
+  # Normalize raw_pools_input into a uniform map
   pools_map = {
-    for p in try(local.raw_wif.pools, []) : try(p.pool_id, p.name) => {
-      pool_id      = try(p.pool_id, p.name)
-      project_id   = try(p.project_id, local.default_project_id)
-      display_name = try(p.display_name, try(p.pool_id, p.name))
-      description  = try(p.description, "Managed Workload Identity Pool for Keyless Authentication")
-      disabled     = try(p.disabled, false)
-      providers    = try(p.providers, [])
+    for k, v in(
+      can(keys(local.raw_pools_input)) ? local.raw_pools_input : {
+        for idx, item in local.raw_pools_input : try(item.pool_id, try(item.name, "pool-${idx}")) => item
+      }
+      ) : k => {
+      pool_id      = try(v.pool_id, k)
+      project_id   = try(v.project_id, local.default_project_id)
+      display_name = try(v.display_name, try(v.pool_id, k))
+      description  = try(v.description, "Managed Workload Identity Pool for Keyless Authentication")
+      disabled     = try(v.disabled, false)
+      providers    = try(v.providers, {})
     }
   }
 
   # Flattened Providers Map across all pools
+  # Each pool's providers can be a map or a list
   providers_list = flatten([
     for pool_key, pool in local.pools_map : [
-      for pr in pool.providers : {
-        composite_key       = "${pool.pool_id}/${try(pr.provider_id, pr.name)}"
+      for pr_k, pr_v in(
+        can(keys(pool.providers)) ? pool.providers : {
+          for idx, item in pool.providers : try(item.provider_id, try(item.name, "provider-${idx}")) => item
+        }
+        ) : {
+        composite_key       = "${pool.pool_id}/${try(pr_v.provider_id, pr_k)}"
         pool_key            = pool.pool_id
-        provider_id         = try(pr.provider_id, pr.name)
+        provider_id         = try(pr_v.provider_id, pr_k)
         project_id          = pool.project_id
-        display_name        = try(pr.display_name, try(pr.provider_id, pr.name))
-        description         = try(pr.description, "Managed Workload Identity Provider")
-        disabled            = try(pr.disabled, false)
-        type                = lower(try(pr.type, "oidc"))
-        issuer_uri          = try(pr.issuer_uri, try(pr.oidc.issuer_uri, null))
-        allowed_audiences   = try(pr.allowed_audiences, try(pr.oidc.allowed_audiences, []))
-        aws_account_id      = try(pr.aws_account_id, try(pr.aws.account_id, null))
-        attribute_mapping   = try(pr.attribute_mapping, {})
-        attribute_condition = try(pr.attribute_condition, null)
+        display_name        = try(pr_v.display_name, try(pr_v.provider_id, pr_k))
+        description         = try(pr_v.description, "Managed Workload Identity Provider")
+        disabled            = try(pr_v.disabled, false)
+        type                = lower(try(pr_v.type, try(pr_v.aws, null) != null ? "aws" : "oidc"))
+        issuer_uri          = try(pr_v.issuer_uri, try(pr_v.oidc.issuer_uri, null))
+        allowed_audiences   = try(pr_v.allowed_audiences, try(pr_v.oidc.allowed_audiences, []))
+        aws_account_id      = try(pr_v.aws_account_id, try(pr_v.aws.account_id, null))
+        attribute_mapping   = try(pr_v.attribute_mapping, {})
+        attribute_condition = try(pr_v.attribute_condition, null)
       }
     ]
   ])
@@ -63,16 +86,27 @@ locals {
   # ----------------------------------------------------------------------------
   # 2. Dedicated WIF Service Accounts & Impersonation Bindings
   # ----------------------------------------------------------------------------
-  raw_service_accounts = try(local.raw_wif.service_accounts, [])
+  # Supports service_accounts as map or list
+  raw_sa_input = try(
+    local.raw_root.service_accounts,
+    try(
+      local.raw_root.workload_identity_federation.service_accounts,
+      try(local.raw_root.wif.service_accounts, {})
+    )
+  )
 
   service_accounts_map = {
-    for sa in local.raw_service_accounts : try(sa.account_id, sa.name) => {
-      account_id   = try(sa.account_id, sa.name)
-      project_id   = try(sa.project_id, local.default_project_id)
-      display_name = try(sa.display_name, try(sa.account_id, sa.name))
-      description  = try(sa.description, "Service Account for Workload Identity Federation Impersonation")
-      roles        = try(sa.roles, [])
-      bindings     = try(sa.bindings, [])
+    for k, v in(
+      can(keys(local.raw_sa_input)) ? local.raw_sa_input : {
+        for idx, item in local.raw_sa_input : try(item.account_id, try(item.name, "sa-${idx}")) => item
+      }
+      ) : k => {
+      account_id   = try(v.account_id, k)
+      project_id   = try(v.project_id, local.default_project_id)
+      display_name = try(v.display_name, try(v.account_id, k))
+      description  = try(v.description, "Service Account for Workload Identity Federation Impersonation")
+      roles        = try(v.roles, [])
+      bindings     = try(v.workload_identity_bindings, try(v.bindings, []))
     }
   }
 
@@ -94,10 +128,15 @@ locals {
   sa_wif_bindings_list = flatten([
     for sa_key, sa in local.service_accounts_map : [
       for idx, b in sa.bindings : {
-        composite_key = "${sa.account_id}/${b.pool}/${replace(b.attribute, "/", "-")}"
+        composite_key = "${sa.account_id}/${try(b.pool_key, b.pool)}/${idx}"
         account_id    = sa.account_id
-        pool_key      = b.pool
-        attribute     = b.attribute
+        pool_key      = try(b.pool_key, b.pool)
+        attribute = (
+          try(b.attribute, null) != null ? b.attribute : (
+            try(b.attribute_name, null) != null && try(b.attribute_value, null) != null ?
+            "${b.attribute_name}/${b.attribute_value}" : "*"
+          )
+        )
       }
     ]
   ])
@@ -107,27 +146,34 @@ locals {
   # ----------------------------------------------------------------------------
   # 3. Identity-Aware Proxy (IAP) - TCP Forwarding (Secure Tunneling for SSH/RDP)
   # ----------------------------------------------------------------------------
-  raw_iap = try(local.raw_config.identity_aware_proxy, local.raw_config.iap, {})
+  raw_iap_tcp = try(
+    local.raw_root.iap_tcp_tunneling,
+    try(
+      local.raw_root.identity_aware_proxy.tcp_tunneling,
+      try(local.raw_root.iap.tcp_tunneling, {})
+    )
+  )
 
-  raw_iap_tcp = try(local.raw_iap.tcp_tunneling, {})
+  enable_iap_firewall = try(local.raw_iap_tcp.enabled, try(local.raw_iap_tcp.enable_firewall, false))
 
-  enable_iap_firewall = try(local.raw_iap_tcp.enable_firewall, true)
+  raw_fw = try(local.raw_iap_tcp.firewall_rule, {})
+
   iap_firewall_config = {
-    name                    = try(local.raw_iap_tcp.firewall_name, "allow-iap-ingress-ssh-rdp")
-    project_id              = try(local.raw_iap_tcp.project_id, local.default_project_id)
-    network                 = try(local.raw_iap_tcp.network, "default")
-    target_tags             = try(local.raw_iap_tcp.target_tags, null)
-    target_service_accounts = try(local.raw_iap_tcp.target_service_accounts, null)
-    ports                   = try(local.raw_iap_tcp.ports, ["22", "3389"])
+    name                    = try(local.raw_fw.name, try(local.raw_iap_tcp.firewall_name, "allow-iap-ingress-ssh-rdp"))
+    project_id              = try(local.raw_fw.project_id, try(local.raw_iap_tcp.project_id, local.default_project_id))
+    network                 = try(local.raw_fw.network, try(local.raw_iap_tcp.network, "default"))
+    target_tags             = try(local.raw_fw.target_tags, try(local.raw_iap_tcp.target_tags, null))
+    target_service_accounts = try(local.raw_fw.target_service_accounts, try(local.raw_iap_tcp.target_service_accounts, null))
+    ports                   = try(local.raw_fw.ports, try(local.raw_iap_tcp.ports, ["22", "3389"]))
   }
 
   # Flattened IAP TCP Tunnel Accessor IAM members (roles/iap.tunnelResourceAccessor)
   iap_tcp_accessors_list = flatten([
     for idx, acc in try(local.raw_iap_tcp.accessors, []) : [
-      for member in acc.members : {
+      for member in try(acc.members, try([acc.member], [])) : {
         composite_key = "${member}-${idx}"
         project_id    = try(acc.project_id, local.default_project_id)
-        role          = "roles/iap.tunnelResourceAccessor"
+        role          = try(acc.role, "roles/iap.tunnelResourceAccessor")
         member        = member
         condition     = try(acc.condition, null)
       }
@@ -139,9 +185,15 @@ locals {
   # ----------------------------------------------------------------------------
   # 4. Identity-Aware Proxy (IAP) - Web Applications (HTTPS Load Balancers)
   # ----------------------------------------------------------------------------
-  raw_iap_web = try(local.raw_iap.web_applications, {})
+  raw_iap_web = try(
+    local.raw_root.iap_web_applications,
+    try(
+      local.raw_root.identity_aware_proxy.web_applications,
+      try(local.raw_root.iap.web_applications, {})
+    )
+  )
 
-  # OAuth Brand (Created once per project if specified)
+  # OAuth Brand (Created only if explicitly specified)
   create_iap_brand = try(local.raw_iap_web.brand, null) != null
   iap_brand_config = local.create_iap_brand ? {
     project_id        = try(local.raw_iap_web.brand.project_id, local.default_project_id)
@@ -149,21 +201,35 @@ locals {
     application_title = local.raw_iap_web.brand.application_title
   } : null
 
-  # OAuth Clients under the Brand
+  # OAuth Clients under the Brand (map or list)
+  raw_clients_input = try(local.raw_iap_web.oauth_clients, {})
   iap_oauth_clients_map = {
-    for c in try(local.raw_iap_web.oauth_clients, []) : c.name => {
-      name         = c.name
-      display_name = try(c.display_name, c.name)
+    for k, c in(
+      can(keys(local.raw_clients_input)) ? local.raw_clients_input : {
+        for idx, item in local.raw_clients_input : try(item.name, "client-${idx}") => item
+      }
+      ) : k => {
+      name         = try(c.name, k)
+      display_name = try(c.display_name, try(c.name, k))
     }
   }
 
   # Flattened Web Backend Service IAM accessors (roles/iap.httpsResourceAccessor)
+  raw_backend_services_input = try(local.raw_iap_web.backend_services, {})
+  backend_services_map = {
+    for k, bs in(
+      can(keys(local.raw_backend_services_input)) ? local.raw_backend_services_input : {
+        for idx, item in local.raw_backend_services_input : try(item.name, "backend-${idx}") => item
+      }
+    ) : k => bs
+  }
+
   iap_web_accessors_list = flatten([
-    for bs in try(local.raw_iap_web.backend_services, []) : [
-      for acc in try(bs.accessors, []) : [
-        for member in acc.members : {
-          composite_key       = "${bs.name}/${try(acc.role, "roles/iap.httpsResourceAccessor")}/${member}"
-          web_backend_service = bs.name
+    for bs_key, bs in local.backend_services_map : [
+      for idx, acc in try(bs.accessors, []) : [
+        for member in try(acc.members, try([acc.member], [])) : {
+          composite_key       = "${try(bs.name, bs_key)}/${try(acc.role, "roles/iap.httpsResourceAccessor")}/${member}"
+          web_backend_service = try(bs.name, bs_key)
           project_id          = try(bs.project_id, local.default_project_id)
           role                = try(acc.role, "roles/iap.httpsResourceAccessor")
           member              = member
