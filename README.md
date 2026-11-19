@@ -118,16 +118,32 @@ gcp-terraform-custom-modules/
 │       ├── outputs.tf
 │       ├── versions.tf
 │       └── README.md
+├── secops-infrastructure/                    # Security Operations (SecOps) & Cryptography domain
+│   ├── README.md                             # SecOps domain overview & implementation sequence
+│   └── crypto-secrets-infra/                 # Cloud KMS (CMEK/HSM) & Secret Manager module
+│       ├── 0-locals.tf                       # Dynamic YAML parser, data transformer & CMEK resolver
+│       ├── 1-kms-keyrings.tf                 # Keyring declarations
+│       ├── 2-kms-keys.tf                     # Symmetric (Software/HSM) & Asymmetric CryptoKeys
+│       ├── 3-kms-iam.tf                      # Keyring, CryptoKey, and Project KMS IAM member bindings
+│       ├── 4-secret-manager.tf               # Secret Manager secrets (Automatic/User-managed replication)
+│       ├── 5-secret-versions.tf              # Optional initial secret version payload management
+│       ├── 6-secret-iam.tf                   # Secret-level & Project-level Secret Manager IAM bindings
+│       ├── variables.tf                      # Input variables
+│       ├── outputs.tf                        # KMS, Secret Manager, and statistical summary outputs
+│       ├── versions.tf                       # Provider constraints
+│       └── README.md                         # Detailed module documentation
 ├── examples/                                 # Reference implementations & sample setups
 │   ├── foundation/                           # Enterprise landing zone deployment example
-│   └── network/
-│       ├── basic-vpc-setup/                  # Multi-VPC hub & spoke deployment example
-│       ├── shared-vpc-setup/                 # Two-stage Shared VPC cross-project setup
-│       ├── firewall-setup/                   # Hierarchical firewall guardrails example
-│       ├── dns-setup/                        # Private & hybrid Cloud DNS example
-│       ├── peering-setup/                    # VPC Network Peering deployment example
-│       ├── psc-setup/                        # Private Service Connect deployment example
-│       └── vpn-setup/                        # HA Cloud VPN site-to-site deployment example
+│   ├── network/
+│   │   ├── basic-vpc-setup/                  # Multi-VPC hub & spoke deployment example
+│   │   ├── shared-vpc-setup/                 # Two-stage Shared VPC cross-project setup
+│   │   ├── firewall-setup/                   # Hierarchical firewall guardrails example
+│   │   ├── dns-setup/                        # Private & hybrid Cloud DNS example
+│   │   ├── peering-setup/                    # VPC Network Peering deployment example
+│   │   ├── psc-setup/                        # Private Service Connect deployment example
+│   │   └── vpn-setup/                        # HA Cloud VPN site-to-site deployment example
+│   └── secops/
+│       └── crypto-secrets-setup/             # Cloud KMS (HSM/CMEK) & Secret Manager deployment example
 ├── .gitignore                                # Git ignore rules
 └── README.md                                 # Root repository documentation
 ```
@@ -146,6 +162,7 @@ gcp-terraform-custom-modules/
 | **Networking** | **Private Service Connect (Google APIs & Published SaaS)** | Declarative Google Cloud Private Service Connect (PSC) management via YAML. Provisions global PSC endpoints for Google APIs (`all-apis`, `vpc-sc`) and regional endpoints for published third-party or producer services without VPC peering or public IPs. | [`networking-infrastructure/private-service-connect`](./networking-infrastructure/private-service-connect/) |
 | **Networking** | **VPC Network Peering (Automated Bi-directional Handshake)** | Declarative Google Cloud VPC Network Peering via YAML. Provisions bi-directional or uni-directional peering connections with automatic reverse peering creation, route exchange controls (custom routes, public subnets), and dependency ordering. | [`networking-infrastructure/network-peering`](./networking-infrastructure/network-peering/) |
 | **Networking** | **High Availability (HA) Cloud VPN (99.99% SLA)** | Declarative Google Cloud HA VPN management via YAML. Provisions dual-interface gateways, external on-premises peer gateways, redundant IPsec tunnels, Cloud Router interfaces, and dynamic eBGP sessions with BFD support. | [`networking-infrastructure/ha-cloud-vpn`](./networking-infrastructure/ha-cloud-vpn/) |
+| **SecOps** | **Crypto & Secrets (Cloud KMS & Secret Manager)** | Dynamic YAML-driven cryptographic infrastructure and enterprise secrets management. Provisions Cloud KMS Keyrings (regional/multi-regional/global), CryptoKeys (Software & FIPS 140-2 Level 3 HSM), CMEK delegation, automated rotation schedules, Secret Manager secrets (automatic & user-managed multi-region replication, CMEK wrapping), rotation alerts, and CEL IAM policies. | [`secops-infrastructure/crypto-secrets-infra`](./secops-infrastructure/crypto-secrets-infra/) |
 
 ---
 
@@ -175,6 +192,17 @@ module "shared_vpc" {
   yaml_config_path = "${path.module}/shared_vpc.yaml"
 
   depends_on = [module.networking]
+}
+```
+
+---
+
+### Example 3: Cryptography & Secrets Infrastructure (Cloud KMS & Secret Manager)
+
+```hcl
+module "crypto_secrets" {
+  source           = "git::https://github.com/yuva-cloud-devops/gcp-terraform-custom-modules.git//secops-infrastructure/crypto-secrets-infra?ref=main"
+  config_file_path = "${path.module}/crypto-secrets.yaml"
 }
 ```
 
