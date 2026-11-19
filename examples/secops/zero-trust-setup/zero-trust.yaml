@@ -1,0 +1,67 @@
+# ==============================================================================
+# Example: Zero-Trust Security Infrastructure Configuration (WIF & IAP)
+# ==============================================================================
+# Demonstrates:
+# - Keyless Workload Identity Federation (WIF) for GitHub Actions CI/CD
+# - Attribute conditions restricting auth to specific repositories
+# - Dedicated Service Account for WIF with least-privilege roles
+# - Identity-Aware Proxy (IAP) TCP Tunneling for bastionless SSH/RDP access
+# - Automated Ingress Firewall rule for Google's IAP netblock (35.235.240.0/20)
+# ==============================================================================
+
+project_id: "yuvaraj-internal-project"
+
+common_labels:
+  environment: "production"
+  department: "secops"
+  managed_by: "terraform"
+  security_tier: "zero-trust"
+
+# ------------------------------------------------------------------------------
+# 1. Workload Identity Federation (WIF)
+# ------------------------------------------------------------------------------
+workload_identity_federation:
+  pools:
+    - pool_id: "github-actions-pool"
+      display_name: "GitHub Actions CI/CD Pool"
+      description: "Federated keyless authentication pool for GitHub Actions pipelines"
+      disabled: false
+      providers:
+        - provider_id: "github-provider"
+          display_name: "GitHub Actions OIDC Provider"
+          description: "OIDC provider exchanging GitHub JWT tokens for GCP access"
+          type: "oidc"
+          issuer_uri: "https://token.actions.githubusercontent.com"
+          attribute_mapping:
+            "google.subject": "assertion.sub"
+            "attribute.actor": "assertion.actor"
+            "attribute.repository": "assertion.repository"
+            "attribute.repository_owner": "assertion.repository_owner"
+          # Only allow workflows from your GitHub organization/user
+          attribute_condition: "assertion.repository_owner == 'yuva-cloud-devops'"
+
+  service_accounts:
+    - account_id: "sa-github-deployer"
+      display_name: "GitHub Actions Deployer"
+      description: "Service Account impersonated by GitHub Actions CI/CD"
+      roles:
+        - "roles/compute.viewer"
+        - "roles/storage.objectViewer"
+      bindings:
+        # Restricts impersonation to a specific repository
+        - pool: "github-actions-pool"
+          attribute: "attribute.repository/yuva-cloud-devops/gcp-terraform-custom-modules"
+
+# ------------------------------------------------------------------------------
+# 2. Identity-Aware Proxy (IAP) - TCP Forwarding
+# ------------------------------------------------------------------------------
+identity_aware_proxy:
+  tcp_tunneling:
+    enable_firewall: true
+    firewall_name: "allow-iap-ingress-ssh-rdp"
+    network: "default"
+    ports: ["22", "3389"]
+    accessors:
+      - members:
+          # Replace with your admin email or group
+          - "user:yuvaraj@clouddevops.com"

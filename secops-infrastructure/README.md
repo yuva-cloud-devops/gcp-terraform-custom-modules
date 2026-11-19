@@ -49,3 +49,9 @@ When provisioning SecOps infrastructure, execute modules in this dependency orde
 - **Purpose**: Declarative provisioning of Google Cloud Data Access Audit Logging (Project/Folder/Org scopes), centralized SIEM log routing (Storage, BigQuery, Pub/Sub), automated writer identity IAM delegation, and built-in CIS Google Cloud Platform Foundations Benchmark Section 2 log-based security metrics.
 - **Documentation**: [`audit-compliance-infra/README.md`](./audit-compliance-infra/README.md)
 - **Reference Example**: [`examples/secops/audit-compliance-setup/`](../examples/secops/audit-compliance-setup/)
+
+### 3. `zero-trust-security-infra`
+- **Purpose**: Declarative provisioning of Zero Trust Access and Passwordless/Keyless Authentication on Google Cloud via YAML. Eliminates public IP requirements and long-lived service account keys by deploying Cloud Identity-Aware Proxy (IAP) for TCP tunneling (SSH/RDP) and Web Applications, alongside Workload Identity Federation (WIF) for keyless CI/CD authentication (GitHub Actions, GitLab, AWS, Azure, OIDC/SAML providers).
+- **Documentation**: [`zero-trust-security-infra/README.md`](./zero-trust-security-infra/README.md)
+- **Reference Example**: [`examples/secops/zero-trust-setup/`](../examples/secops/zero-trust-setup/)
+
