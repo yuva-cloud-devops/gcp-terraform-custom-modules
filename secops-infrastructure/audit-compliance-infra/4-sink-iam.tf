@@ -30,7 +30,7 @@ locals {
   bigquery_sink_iam = {
     for k, s in local.sinks : k => {
       sink_name       = s.name
-      project_id      = startswith(s.destination, "bigquery.googleapis.com/projects/") ? split("/", s.destination)[2] : try(s.target_id, local.default_project_id)
+      project_id      = startswith(s.resolved_destination, "bigquery.googleapis.com/projects/") ? split("/", s.resolved_destination)[2] : try(s.target_id, local.default_project_id)
       dataset_id      = s.dest_target
       writer_identity = try(local.sink_writer_identities[k], null)
     }
@@ -41,7 +41,7 @@ locals {
   pubsub_sink_iam = {
     for k, s in local.sinks : k => {
       sink_name       = s.name
-      project_id      = startswith(s.destination, "pubsub.googleapis.com/projects/") ? split("/", s.destination)[2] : try(s.target_id, local.default_project_id)
+      project_id      = startswith(s.resolved_destination, "pubsub.googleapis.com/projects/") ? split("/", s.resolved_destination)[2] : try(s.target_id, local.default_project_id)
       topic           = s.dest_target
       writer_identity = try(local.sink_writer_identities[k], null)
     }

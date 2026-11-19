@@ -116,6 +116,18 @@ locals {
         )
       )
 
+      destination = (
+        startswith(s.destination, "bucket:") ?
+        "storage.googleapis.com/${split(":", s.destination)[1]}" : (
+          startswith(s.destination, "bigquery:") ?
+          "bigquery.googleapis.com/projects/${try(s.target_id, local.default_project_id)}/datasets/${split(":", s.destination)[1]}" : (
+            startswith(s.destination, "pubsub:") ?
+            "pubsub.googleapis.com/projects/${try(s.target_id, local.default_project_id)}/topics/${split(":", s.destination)[1]}" :
+            s.destination
+          )
+        )
+      )
+
       # Destination type tag (storage, bigquery, pubsub, or external)
       dest_type = (
         startswith(s.destination, "bucket:") || startswith(s.destination, "storage.googleapis.com/") ? "storage" : (
