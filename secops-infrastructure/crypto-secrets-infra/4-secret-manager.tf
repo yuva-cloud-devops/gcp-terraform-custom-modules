@@ -68,4 +68,11 @@ resource "google_secret_manager_secret" "secrets" {
       name = topics.value.name
     }
   }
+
+  # Ensure KMS IAM bindings and Secret Manager Service Agent CMEK permissions
+  # are fully active in GCP before attempting to create CMEK-wrapped secrets
+  depends_on = [
+    google_kms_crypto_key_iam_member.secret_manager_cmek,
+    google_kms_crypto_key_iam_member.key_members
+  ]
 }

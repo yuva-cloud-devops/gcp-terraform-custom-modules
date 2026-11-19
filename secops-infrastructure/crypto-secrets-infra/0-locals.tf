@@ -286,4 +286,30 @@ locals {
       ]
     ]) : item.key => item
   }
+
+  # ----------------------------------------------------------------------------
+  # 7. Secret Manager CMEK Service Agent Delegation
+  # ----------------------------------------------------------------------------
+  # Distinct project IDs across KMS and Secrets
+  distinct_project_ids = distinct(compact(concat(
+    [local.default_project_id],
+    [for kr in local.raw_keyrings : try(kr.project_id, null)],
+    [for s in local.raw_secrets : try(s.project_id, null)]
+  )))
+
+  # Map of Secret Manager projects and their referenced CMEK keys
+  secret_manager_cmek_grants = {
+    for item in flatten([
+      for s in values(local.secrets) : [
+        for key in distinct(compact(concat(
+          [s.resolved_kms_key_name],
+          [for r in s.user_managed_replicas : r.resolved_kms_key_name]
+        ))) : {
+          grant_key     = "${s.project_id}--${replace(replace(key, "/", "_"), ":", "_")}"
+          project_id    = s.project_id
+          crypto_key_id = key
+        }
+      ]
+    ]) : item.grant_key => item
+  }
 }
