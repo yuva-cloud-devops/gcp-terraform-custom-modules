@@ -18,6 +18,7 @@ resource "google_storage_bucket" "audit_buckets" {
   location                    = each.value.location
   storage_class               = each.value.storage_class
   uniform_bucket_level_access = true
+  force_destroy               = each.value.force_destroy
   labels                      = each.value.labels
 
   versioning {
@@ -69,6 +70,7 @@ resource "google_bigquery_dataset" "audit_datasets" {
   location                    = each.value.location
   description                 = each.value.description
   default_table_expiration_ms = each.value.default_table_expiration_ms
+  delete_contents_on_destroy  = each.value.delete_contents_on_destroy
   labels                      = each.value.labels
 
   dynamic "default_encryption_configuration" {

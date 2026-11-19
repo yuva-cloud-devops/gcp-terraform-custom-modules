@@ -52,6 +52,7 @@ locals {
       location      = try(b.location, local.default_location)
       storage_class = try(b.storage_class, "STANDARD")
       versioning    = try(b.versioning, true)
+      force_destroy = try(b.force_destroy, true)
       labels        = merge(local.common_labels, try(b.labels, {}))
       kms_key_name  = try(b.kms_key_name, null)
       retention_policy = try(b.retention_policy, null) != null ? {
@@ -70,6 +71,7 @@ locals {
       location                    = try(d.location, local.default_location)
       description                 = try(d.description, "Centralized Security Audit Analytics Dataset")
       default_table_expiration_ms = try(d.default_table_expiration_ms, null)
+      delete_contents_on_destroy  = try(d.delete_contents_on_destroy, true)
       labels                      = merge(local.common_labels, try(d.labels, {}))
       kms_key_name                = try(d.kms_key_name, null)
     }
