@@ -140,21 +140,11 @@ locals {
     []
   )
 
-  secrets = {
-    for s in local.raw_secrets : s.secret_id => {
-      secret_id           = s.secret_id
-      project_id          = try(s.project_id, local.default_project_id)
-      labels              = merge(local.common_labels, try(s.labels, {}))
-      annotations         = try(s.annotations, null)
-      expire_time         = try(s.expire_time, null)
-      ttl                 = try(s.ttl, null)
-      version_destroy_ttl = try(s.version_destroy_ttl, null)
-
-      # Replication type: 'automatic' (default) or 'user_managed'
-      replication_type = lower(try(s.replication.type, s.replication.mode, "automatic"))
-
-      # Resolve CMEK key for automatic replication (supports full ID, composite "kr/key", or short "key")
-      resolved_kms_key_name = (
+  # Pre-resolve raw secrets and their CMEK key paths
+  raw_secrets_processed = [
+    for s in local.raw_secrets : {
+      raw = s
+      resolved_kms_key = (
         try(s.replication.customer_managed_encryption.kms_key_name, s.replication.customer_managed_encryption.kms_key_ref, s.replication.kms_key_name, null) == null ? null : (
           startswith(try(s.replication.customer_managed_encryption.kms_key_name, s.replication.customer_managed_encryption.kms_key_ref, s.replication.kms_key_name), "projects/") ?
           try(s.replication.customer_managed_encryption.kms_key_name, s.replication.customer_managed_encryption.kms_key_ref, s.replication.kms_key_name) :
@@ -169,13 +159,41 @@ locals {
           )
         )
       )
+    }
+  ]
 
-      # User-managed replicas
-      user_managed_replicas = [
-        for r in try(s.replication.replicas, []) : {
-          location = r.location
+  secrets = {
+    for item in local.raw_secrets_processed : item.raw.secret_id => {
+      secret_id           = item.raw.secret_id
+      project_id          = try(item.raw.project_id, local.default_project_id)
+      labels              = merge(local.common_labels, try(item.raw.labels, {}))
+      annotations         = try(item.raw.annotations, null)
+      expire_time         = try(item.raw.expire_time, null)
+      ttl                 = try(item.raw.ttl, null)
+      version_destroy_ttl = try(item.raw.version_destroy_ttl, null)
+
+      # Google Secret Manager Architectural Rule:
+      # - Automatic replication ONLY supports Cloud KMS keys located in [global].
+      # - Regional Cloud KMS keys (e.g., asia-south1) REQUIRE user_managed replication.
+      # The module automatically adapts regional CMEK keys to user_managed replication.
+      replication_type = (
+        (item.resolved_kms_key != null && try(split("/", item.resolved_kms_key)[3], "") != "" && try(split("/", item.resolved_kms_key)[3], "") != "global") ? "user_managed" : (
+          lower(try(item.raw.replication.type, item.raw.replication.mode, length(try(item.raw.replication.replicas, [])) > 0 ? "user_managed" : "automatic"))
+        )
+      )
+
+      # Automatic replication CMEK (only valid for global KMS keys)
+      resolved_kms_key_name = (
+        (item.resolved_kms_key != null && try(split("/", item.resolved_kms_key)[3], "") == "global") ?
+        item.resolved_kms_key : null
+      )
+
+      # User-managed replicas (configured explicitly or auto-adapted for regional CMEK keys)
+      user_managed_replicas = length(try(item.raw.replication.replicas, [])) > 0 ? [
+        for r in item.raw.replication.replicas : {
+          location = try(r.location, r)
           resolved_kms_key_name = (
-            try(r.customer_managed_encryption.kms_key_name, r.customer_managed_encryption.kms_key_ref, r.kms_key_name, null) == null ? null : (
+            try(r.customer_managed_encryption.kms_key_name, r.customer_managed_encryption.kms_key_ref, r.kms_key_name, null) != null ? (
               startswith(try(r.customer_managed_encryption.kms_key_name, r.customer_managed_encryption.kms_key_ref, r.kms_key_name), "projects/") ?
               try(r.customer_managed_encryption.kms_key_name, r.customer_managed_encryption.kms_key_ref, r.kms_key_name) :
               lookup(
@@ -187,20 +205,28 @@ locals {
                   try(r.customer_managed_encryption.kms_key_name, r.customer_managed_encryption.kms_key_ref, r.kms_key_name)
                 )
               )
-            )
+            ) : item.resolved_kms_key
           )
         }
-      ]
+      ] : (
+        # If user did not specify explicit replicas, but CMEK key is regional, auto-bind replica to that region
+        (item.resolved_kms_key != null && try(split("/", item.resolved_kms_key)[3], "") != "" && try(split("/", item.resolved_kms_key)[3], "") != "global") ? [
+          {
+            location              = split("/", item.resolved_kms_key)[3]
+            resolved_kms_key_name = item.resolved_kms_key
+          }
+        ] : []
+      )
 
       # Optional Rotation policy
-      rotation = try(s.rotation, null) != null ? {
-        rotation_period    = s.rotation.rotation_period
-        next_rotation_time = try(s.rotation.next_rotation_time, null)
+      rotation = try(item.raw.rotation, null) != null ? {
+        rotation_period    = item.raw.rotation.rotation_period
+        next_rotation_time = try(item.raw.rotation.next_rotation_time, null)
       } : null
 
       # Optional Topics (Pub/Sub notifications)
       topics = [
-        for t in try(s.topics, []) : {
+        for t in try(item.raw.topics, []) : {
           name = try(t.name, t)
         }
       ]
