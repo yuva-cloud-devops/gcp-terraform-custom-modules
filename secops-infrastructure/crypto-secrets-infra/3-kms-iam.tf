@@ -67,11 +67,9 @@ resource "google_project_iam_member" "kms_project_members" {
 # permissions on the KMS keys used for Secret Manager envelope encryption.
 # ------------------------------------------------------------------------------
 
-resource "google_project_service_identity" "secretmanager" {
-  for_each = length(local.secret_manager_cmek_grants) > 0 ? toset(local.distinct_project_ids) : toset([])
-
-  project = each.value
-  service = "secretmanager.googleapis.com"
+data "google_project" "cmek_projects" {
+  for_each   = length(local.secret_manager_cmek_grants) > 0 ? toset(local.distinct_project_ids) : toset([])
+  project_id = each.value
 }
 
 resource "google_kms_crypto_key_iam_member" "secret_manager_cmek" {
@@ -79,5 +77,5 @@ resource "google_kms_crypto_key_iam_member" "secret_manager_cmek" {
 
   crypto_key_id = each.value.crypto_key_id
   role          = "roles/cloudkms.cryptoKeyEncrypterDecrypter"
-  member        = "serviceAccount:${google_project_service_identity.secretmanager[each.value.project_id].email}"
+  member        = "serviceAccount:service-${data.google_project.cmek_projects[each.value.project_id].number}@gcp-sa-secretmanager.iam.gserviceaccount.com"
 }
