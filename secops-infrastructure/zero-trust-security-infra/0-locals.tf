@@ -193,27 +193,6 @@ locals {
     )
   )
 
-  # OAuth Brand (Created only if explicitly specified)
-  create_iap_brand = try(local.raw_iap_web.brand, null) != null
-  iap_brand_config = local.create_iap_brand ? {
-    project_id        = try(local.raw_iap_web.brand.project_id, local.default_project_id)
-    support_email     = local.raw_iap_web.brand.support_email
-    application_title = local.raw_iap_web.brand.application_title
-  } : null
-
-  # OAuth Clients under the Brand (map or list)
-  raw_clients_input = try(local.raw_iap_web.oauth_clients, {})
-  iap_oauth_clients_map = {
-    for k, c in(
-      can(keys(local.raw_clients_input)) ? local.raw_clients_input : {
-        for idx, item in local.raw_clients_input : try(item.name, "client-${idx}") => item
-      }
-      ) : k => {
-      name         = try(c.name, k)
-      display_name = try(c.display_name, try(c.name, k))
-    }
-  }
-
   # Flattened Web Backend Service IAM accessors (roles/iap.httpsResourceAccessor)
   raw_backend_services_input = try(local.raw_iap_web.backend_services, {})
   backend_services_map = {

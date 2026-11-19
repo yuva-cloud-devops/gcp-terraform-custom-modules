@@ -61,25 +61,15 @@ output "iap_tunnel_accessors" {
   }
 }
 
-output "iap_brand" {
-  description = "Created IAP OAuth brand details."
-  value = length(google_iap_brand.brand) > 0 ? {
-    id    = google_iap_brand.brand[0].id
-    name  = google_iap_brand.brand[0].name
-    email = google_iap_brand.brand[0].support_email
-  } : null
-}
-
-output "iap_oauth_clients" {
-  description = "Map of created IAP OAuth clients."
+output "iap_backend_accessors" {
+  description = "Map of members granted IAP HTTPS Web Backend Accessor permissions."
   value = {
-    for k, c in google_iap_client.clients : k => {
-      id           = c.id
-      client_id    = c.client_id
-      display_name = c.display_name
+    for k, a in google_iap_web_backend_service_iam_member.backend_accessors : k => {
+      backend_service = a.web_backend_service
+      member          = a.member
+      role            = a.role
     }
   }
-  sensitive = true
 }
 
 output "summary" {
