@@ -2,48 +2,50 @@ edge_security:
   project_id: "yuvaraj-internal-project"
 
   # =========================================================================
-  # 1. CLOUD ARMOR SECURITY POLICIES (WAF & DDOS MITIGATION)
+  # 1. CLOUD ARMOR WAF (Minimal Policy with SQLi Protection)
   # =========================================================================
   cloud_armor_policies:
-    secops-edge-waf-policy:
-      description: "Enterprise Edge WAF with OWASP Top 10 mitigation and Rate Limiting"
+    minimal-waf-policy:
+      description: "Minimal Edge WAF with OWASP SQLi defense"
       default_rule_action: "allow"
       adaptive_protection: true
-      advanced_options:
-        json_parsing: "STANDARD"
-        log_level: "NORMAL"
       rules:
-        # Priority 1000: Block automated vulnerability scanners
-        block-scanner-probes:
+        block-sqli:
           priority: 1000
           action: "deny(403)"
-          description: "OWASP Automated Scanner & Probe Detection"
-          owasp_ruleset: "scannerdetection-v33-stable"
-
-        # Priority 1100: Mitigate SQL Injection (SQLi)
-        block-sqli:
-          priority: 1100
-          action: "deny(403)"
-          description: "OWASP SQL Injection Mitigation"
+          description: "Block SQL injection attempts"
           owasp_ruleset: "sqli-v33-stable"
 
-        # Priority 1200: Mitigate Cross-Site Scripting (XSS)
-        block-xss:
-          priority: 1200
-          action: "deny(403)"
-          description: "OWASP Cross-Site Scripting Mitigation"
-          owasp_ruleset: "xss-v33-stable"
+  # =========================================================================
+  # 2. CLOUD IDS (Minimal Deep Packet Inspection Endpoint)
+  # =========================================================================
+  cloud_ids_endpoints:
+    minimal-ids-endpoint:
+      location: "asia-south1"
+      network: "default"
+      severity: "MEDIUM"
+      description: "Cloud IDS threat inspection on default VPC"
 
-        # Priority 2000: Layer 7 Rate Limiting (Throttle scrapers / DoS)
-        rate-limit-general:
-          priority: 2000
-          action: "throttle"
-          description: "Throttle aggressive traffic exceeding 100 requests per minute per IP"
-          expression: "true"
-          rate_limit_options:
-            conform_action: "allow"
-            exceed_action: "deny(429)"
-            enforce_on_key: "IP"
-            rate_limit_threshold:
-              count: 100
-              interval_sec: 60
+  # =========================================================================
+  # 3. VPC SERVICE CONTROLS (Access Context Manager Perimeter)
+  # =========================================================================
+  # NOTE: Replace with your numeric Org Access Policy ID and Project Number
+  vpc_service_controls:
+    access_policy_id: "123456789012" # From: gcloud access-context-manager policies list --organization=ORG_ID
+    
+    access_levels:
+      trusted-office-ip:
+        title: "Trusted Office IP"
+        ip_subnetworks:
+          - "103.21.244.0/24"
+
+    service_perimeters:
+      minimal-data-perimeter:
+        title: "Data Exfiltration Protection Perimeter"
+        restricted_services:
+          - "storage.googleapis.com"
+          - "bigquery.googleapis.com"
+        resources:
+          - "projects/986244541727"   # VPC SC requires projects/<NUMERIC_PROJECT_NUMBER>
+        access_levels:
+          - "trusted-office-ip"

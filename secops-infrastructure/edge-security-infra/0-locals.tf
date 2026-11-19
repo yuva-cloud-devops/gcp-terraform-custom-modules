@@ -99,7 +99,7 @@ locals {
     for k, v in local.raw_ids_input : try(v.name, try(v.endpoint_id, tostring(k))) => {
       name        = try(v.name, try(v.endpoint_id, tostring(k)))
       project_id  = try(v.project_id, local.default_project_id)
-      location    = try(v.location, try(v.region, "asia-south1"))
+      location    = try(v.location, try(v.zone, "asia-south1-a"))
       network     = try(v.network, "default")
       severity    = upper(try(v.severity, "MEDIUM")) # INFORMATIONAL, LOW, MEDIUM, HIGH, CRITICAL
       description = try(v.description, "Managed Cloud IDS threat detection endpoint")
