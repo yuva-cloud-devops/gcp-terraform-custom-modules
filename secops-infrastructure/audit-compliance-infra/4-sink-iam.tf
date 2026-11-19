@@ -50,6 +50,19 @@ locals {
 }
 
 # ------------------------------------------------------------------------------
+# Cloud Logging Service Identity Initialization
+# ------------------------------------------------------------------------------
+# Ensures the Cloud Logging Service Agent
+# (service-${PROJECT_NUMBER}@gcp-sa-logging.iam.gserviceaccount.com)
+# is officially initialized in Google Cloud IAM before sink writer policies apply.
+resource "google_project_service_identity" "logging" {
+  count    = local.default_project_id != null ? 1 : 0
+  provider = google-beta
+  project  = local.default_project_id
+  service  = "logging.googleapis.com"
+}
+
+# ------------------------------------------------------------------------------
 # Storage Writer IAM Delegation
 # ------------------------------------------------------------------------------
 resource "google_storage_bucket_iam_member" "sink_storage_writer" {
@@ -60,6 +73,7 @@ resource "google_storage_bucket_iam_member" "sink_storage_writer" {
   member = each.value.writer_identity
 
   depends_on = [
+    google_project_service_identity.logging,
     google_storage_bucket.audit_buckets,
     google_logging_project_sink.project_sinks,
     google_logging_folder_sink.folder_sinks,
@@ -79,6 +93,7 @@ resource "google_bigquery_dataset_iam_member" "sink_bigquery_writer" {
   member     = each.value.writer_identity
 
   depends_on = [
+    google_project_service_identity.logging,
     google_bigquery_dataset.audit_datasets,
     google_logging_project_sink.project_sinks,
     google_logging_folder_sink.folder_sinks,
@@ -98,6 +113,7 @@ resource "google_pubsub_topic_iam_member" "sink_pubsub_writer" {
   member  = each.value.writer_identity
 
   depends_on = [
+    google_project_service_identity.logging,
     google_pubsub_topic.audit_topics,
     google_logging_project_sink.project_sinks,
     google_logging_folder_sink.folder_sinks,

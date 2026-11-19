@@ -29,6 +29,7 @@ resource "google_logging_project_sink" "project_sinks" {
   }
 
   depends_on = [
+    google_project_service_identity.logging,
     google_storage_bucket.audit_buckets,
     google_bigquery_dataset.audit_datasets,
     google_pubsub_topic.audit_topics
@@ -58,6 +59,7 @@ resource "google_logging_folder_sink" "folder_sinks" {
   }
 
   depends_on = [
+    google_project_service_identity.logging,
     google_storage_bucket.audit_buckets,
     google_bigquery_dataset.audit_datasets,
     google_pubsub_topic.audit_topics
@@ -87,6 +89,7 @@ resource "google_logging_organization_sink" "org_sinks" {
   }
 
   depends_on = [
+    google_project_service_identity.logging,
     google_storage_bucket.audit_buckets,
     google_bigquery_dataset.audit_datasets,
     google_pubsub_topic.audit_topics
