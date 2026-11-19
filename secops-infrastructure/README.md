@@ -55,3 +55,9 @@ When provisioning SecOps infrastructure, execute modules in this dependency orde
 - **Documentation**: [`zero-trust-security-infra/README.md`](./zero-trust-security-infra/README.md)
 - **Reference Example**: [`examples/secops/zero-trust-setup/`](../examples/secops/zero-trust-setup/)
 
+### 4. `edge-security-infra`
+- **Purpose**: Declarative provisioning of Perimeter Security, Layer 7 WAF, Deep Packet Inspection (DPI), and Data Loss Prevention (DLP) boundaries via YAML. Deploys Cloud Armor security policies with OWASP Top 10 preconfigured rulesets, Layer 7 Adaptive Protection, rate limiting, and geo-fencing, alongside Cloud IDS intrusion detection endpoints and VPC Service Controls (VPC SC) perimeters with Access Context Manager.
+- **Documentation**: [`edge-security-infra/README.md`](./edge-security-infra/README.md)
+- **Reference Example**: [`examples/secops/edge-security-setup/`](../examples/secops/edge-security-setup/)
+
+

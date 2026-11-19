@@ -1,0 +1,49 @@
+edge_security:
+  project_id: "yuvaraj-internal-project"
+
+  # =========================================================================
+  # 1. CLOUD ARMOR SECURITY POLICIES (WAF & DDOS MITIGATION)
+  # =========================================================================
+  cloud_armor_policies:
+    secops-edge-waf-policy:
+      description: "Enterprise Edge WAF with OWASP Top 10 mitigation and Rate Limiting"
+      default_rule_action: "allow"
+      adaptive_protection: true
+      advanced_options:
+        json_parsing: "STANDARD"
+        log_level: "NORMAL"
+      rules:
+        # Priority 1000: Block automated vulnerability scanners
+        block-scanner-probes:
+          priority: 1000
+          action: "deny(403)"
+          description: "OWASP Automated Scanner & Probe Detection"
+          owasp_ruleset: "scannerdetection-v33-stable"
+
+        # Priority 1100: Mitigate SQL Injection (SQLi)
+        block-sqli:
+          priority: 1100
+          action: "deny(403)"
+          description: "OWASP SQL Injection Mitigation"
+          owasp_ruleset: "sqli-v33-stable"
+
+        # Priority 1200: Mitigate Cross-Site Scripting (XSS)
+        block-xss:
+          priority: 1200
+          action: "deny(403)"
+          description: "OWASP Cross-Site Scripting Mitigation"
+          owasp_ruleset: "xss-v33-stable"
+
+        # Priority 2000: Layer 7 Rate Limiting (Throttle scrapers / DoS)
+        rate-limit-general:
+          priority: 2000
+          action: "throttle"
+          description: "Throttle aggressive traffic exceeding 100 requests per minute per IP"
+          expression: "true"
+          rate_limit_options:
+            conform_action: "allow"
+            exceed_action: "deny(429)"
+            enforce_on_key: "IP"
+            rate_limit_threshold:
+              count: 100
+              interval_sec: 60

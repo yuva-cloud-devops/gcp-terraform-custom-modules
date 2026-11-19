@@ -143,14 +143,23 @@ gcp-terraform-custom-modules/
 │       ├── outputs.tf                        # Sinks, writer identities, destinations & metrics
 │       ├── versions.tf                       # Provider constraints
 │       └── README.md                         # Detailed module documentation
-│   └── zero-trust-security-infra/            # Identity-Aware Proxy (IAP) & Workload Identity Federation (WIF)
-│       ├── 0-locals.tf                       # Dynamic YAML parser, WIF principal URIs & IAP transformers
-│       ├── 1-workload-identity-pools.tf      # Workload Identity Pools & OIDC/AWS/SAML Providers
-│       ├── 2-wif-service-accounts.tf         # Dedicated workload SAs & WorkloadIdentityUser bindings
-│       ├── 3-iap-tcp-tunnel.tf               # IAP TCP ingress firewall (35.235.240.0/20) & tunnel IAM
-│       ├── 4-iap-web-applications.tf         # IAP OAuth Brands, Clients & HTTPS Web Backend IAM
+│   ├── zero-trust-security-infra/            # Identity-Aware Proxy (IAP) & Workload Identity Federation (WIF)
+│   │   ├── 0-locals.tf                       # Dynamic YAML parser, WIF principal URIs & IAP transformers
+│   │   ├── 1-workload-identity-pools.tf      # Workload Identity Pools & OIDC/AWS/SAML Providers
+│   │   ├── 2-wif-service-accounts.tf         # Dedicated workload SAs & WorkloadIdentityUser bindings
+│   │   ├── 3-iap-tcp-tunnel.tf               # IAP TCP ingress firewall (35.235.240.0/20) & tunnel IAM
+│   │   ├── 4-iap-web-applications.tf         # IAP OAuth Brands, Clients & HTTPS Web Backend IAM
+│   │   ├── variables.tf                      # Input variables
+│   │   ├── outputs.tf                        # Pools, providers, SAs, firewall rules & client IDs
+│   │   ├── versions.tf                       # Provider constraints
+│   │   └── README.md                         # Detailed module documentation
+│   └── edge-security-infra/                  # Cloud Armor, Cloud IDS, VPC Service Controls (VPC SC)
+│       ├── 0-locals.tf                       # Dynamic YAML parser, OWASP rule generator & VPC SC mappings
+│       ├── 1-cloud-armor-waf.tf              # Cloud Armor WAF security policies, OWASP rules & rate limiting
+│       ├── 2-cloud-ids.tf                    # Cloud IDS threat inspection endpoints
+│       ├── 3-vpc-service-controls.tf         # Access Context Manager access levels & Service Perimeters
 │       ├── variables.tf                      # Input variables
-│       ├── outputs.tf                        # Pools, providers, SAs, firewall rules & client IDs
+│       ├── outputs.tf                        # Policies, endpoints, perimeters & summary metrics
 │       ├── versions.tf                       # Provider constraints
 │       └── README.md                         # Detailed module documentation
 ├── examples/                                 # Reference implementations & sample setups
@@ -166,7 +175,8 @@ gcp-terraform-custom-modules/
 │   └── secops/
 │       ├── crypto-secrets-setup/             # Cloud KMS (HSM/CMEK) & Secret Manager deployment example
 │       ├── audit-compliance-setup/           # SIEM Log Sinks, WORM Storage & CIS Metrics deployment example
-│       └── zero-trust-setup/                 # Keyless GitHub Actions WIF & IAP TCP Tunneling example
+│       ├── zero-trust-setup/                 # Keyless GitHub Actions WIF & IAP TCP Tunneling example
+│       └── edge-security-setup/              # Cloud Armor WAF, OWASP mitigation & Rate Limiting example
 ├── .gitignore                                # Git ignore rules
 └── README.md                                 # Root repository documentation
 ```
@@ -188,6 +198,7 @@ gcp-terraform-custom-modules/
 | **SecOps** | **Crypto & Secrets (Cloud KMS & Secret Manager)** | Dynamic YAML-driven cryptographic infrastructure and enterprise secrets management. Provisions Cloud KMS Keyrings (regional/multi-regional/global), CryptoKeys (Software & FIPS 140-2 Level 3 HSM), CMEK delegation, automated rotation schedules, Secret Manager secrets (automatic & user-managed multi-region replication, CMEK wrapping), rotation alerts, and CEL IAM policies. | [`secops-infrastructure/crypto-secrets-infra`](./secops-infrastructure/crypto-secrets-infra/) |
 | **SecOps** | **Audit & Compliance (Audit Logs, SIEM Sinks & CIS Metrics)** | Dynamic YAML-driven audit and compliance infrastructure. Provisions Project/Folder/Org Data Access Audit Logs (Admin Read, Data Read, Data Write), centralized SIEM log sinks to WORM Cloud Storage, BigQuery analytics datasets, and Pub/Sub streaming topics, with automated sink writer IAM delegation and 9 built-in CIS GCP Foundations Benchmark Section 2 security metrics. | [`secops-infrastructure/audit-compliance-infra`](./secops-infrastructure/audit-compliance-infra/) |
 | **SecOps** | **Zero Trust & Keyless Access (IAP & WIF)** | Dynamic YAML-driven Zero Trust and keyless authentication infrastructure. Deploys Workload Identity Federation (WIF) pools and providers for keyless CI/CD (GitHub Actions, GitLab, AWS, Azure, OIDC/SAML) with CEL attribute mappings and impersonation controls (`roles/iam.workloadIdentityUser`). Manages Identity-Aware Proxy (IAP) TCP tunneling ingress firewall rules (`35.235.240.0/20`), VM tunnel accessor IAM delegations (`roles/iap.tunnelResourceAccessor`), and IAP Web Application OAuth brands, clients, and backend HTTPS accessors (`roles/iap.httpsResourceAccessor`). | [`secops-infrastructure/zero-trust-security-infra`](./secops-infrastructure/zero-trust-security-infra/) |
+| **SecOps** | **Edge Security (Cloud Armor, Cloud IDS & VPC SC)** | Dynamic YAML-driven edge security, threat inspection, and perimeter enforcement. Deploys Cloud Armor Web Application Firewall (WAF) policies with OWASP Top 10 preconfigured rulesets (SQLi, XSS, LFI, RCE, Scanners), Layer 7 Adaptive Protection (ML DDoS defense), Layer 7 rate limiting/throttling, and Geo-fencing CEL expressions. Provisions Cloud IDS deep packet inspection (DPI) endpoints powered by Palo Alto Networks threat signatures, and Access Context Manager (ACM) VPC Service Controls perimeters to prevent data exfiltration. | [`secops-infrastructure/edge-security-infra`](./secops-infrastructure/edge-security-infra/) |
 
 ---
 
