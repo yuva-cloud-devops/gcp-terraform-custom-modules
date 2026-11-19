@@ -41,27 +41,29 @@ locals {
   # ----------------------------------------------------------------------------
   # 2. Cloud KMS Crypto Keys
   # ----------------------------------------------------------------------------
-  kms_keys = merge(concat([
-    for kr in local.raw_keyrings : {
-      for k in try(kr.keys, []) : "${kr.name}/${k.name}" => {
-        composite_key                 = "${kr.name}/${k.name}"
-        keyring_key                   = kr.name
-        keyring_name                  = kr.name
-        keyring_location              = try(kr.location, local.default_location)
-        project_id                    = try(k.project_id, kr.project_id, local.default_project_id)
-        name                          = k.name
-        purpose                       = upper(try(k.purpose, "ENCRYPT_DECRYPT"))
-        rotation_period               = try(k.rotation_period, null)
-        destroy_scheduled_duration    = try(k.destroy_scheduled_duration, null)
-        skip_initial_version_creation = try(k.skip_initial_version_creation, false)
-        labels                        = merge(local.common_labels, try(k.labels, {}))
-        version_template = try(k.version_template, null) != null ? {
-          algorithm        = try(k.version_template.algorithm, "GOOGLE_SYMMETRIC_ENCRYPTION")
-          protection_level = upper(try(k.version_template.protection_level, "SOFTWARE"))
-        } : null
-      }
-    }
-  ], [{}]))
+  kms_keys = {
+    for item in flatten([
+      for kr in local.raw_keyrings : [
+        for k in try(kr.keys, []) : {
+          composite_key                 = "${kr.name}/${k.name}"
+          keyring_key                   = kr.name
+          keyring_name                  = kr.name
+          keyring_location              = try(kr.location, local.default_location)
+          project_id                    = try(k.project_id, kr.project_id, local.default_project_id)
+          name                          = k.name
+          purpose                       = upper(try(k.purpose, "ENCRYPT_DECRYPT"))
+          rotation_period               = try(k.rotation_period, null)
+          destroy_scheduled_duration    = try(k.destroy_scheduled_duration, null)
+          skip_initial_version_creation = try(k.skip_initial_version_creation, false)
+          labels                        = merge(local.common_labels, try(k.labels, {}))
+          version_template = try(k.version_template, null) != null ? {
+            algorithm        = try(k.version_template.algorithm, "GOOGLE_SYMMETRIC_ENCRYPTION")
+            protection_level = upper(try(k.version_template.protection_level, "SOFTWARE"))
+          } : null
+        }
+      ]
+    ]) : item.composite_key => item
+  }
 
   # Deterministic resource IDs (projects/{project}/locations/{location}/keyRings/{keyring}/cryptoKeys/{key})
   kms_key_resource_ids = {
