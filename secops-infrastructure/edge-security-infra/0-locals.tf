@@ -35,14 +35,10 @@ locals {
     )
   )
 
-  # Normalize policies into a uniform map
+  # Normalize policies into a uniform map (supports both map and list in YAML)
   armor_policies_map = {
-    for k, v in(
-      can(keys(local.raw_armor_input)) ? local.raw_armor_input : {
-        for idx, item in local.raw_armor_input : try(item.name, try(item.policy_id, "policy-${idx}")) => item
-      }
-      ) : k => {
-      name                = try(v.name, k)
+    for k, v in local.raw_armor_input : try(v.name, try(v.policy_id, tostring(k))) => {
+      name                = try(v.name, try(v.policy_id, tostring(k)))
       project_id          = try(v.project_id, local.default_project_id)
       description         = try(v.description, "Managed Cloud Armor Security Policy")
       type                = try(v.type, "CLOUD_ARMOR")
@@ -58,11 +54,7 @@ locals {
   # Generates full rule object with match type, IP ranges, CEL expressions, and rate limits
   armor_rules_list = flatten([
     for policy_key, policy in local.armor_policies_map : [
-      for r_k, r_v in(
-        can(keys(policy.rules)) ? policy.rules : {
-          for idx, item in policy.rules : try(item.rule_id, try(item.name, "rule-${idx}")) => item
-        }
-        ) : {
+      for r_k, r_v in policy.rules : {
         composite_key = "${policy.name}/${try(r_v.priority, r_k)}"
         policy_name   = policy.name
         project_id    = policy.project_id
@@ -104,12 +96,8 @@ locals {
   )
 
   cloud_ids_map = {
-    for k, v in(
-      can(keys(local.raw_ids_input)) ? local.raw_ids_input : {
-        for idx, item in local.raw_ids_input : try(item.name, try(item.endpoint_id, "ids-${idx}")) => item
-      }
-      ) : k => {
-      name        = try(v.name, k)
+    for k, v in local.raw_ids_input : try(v.name, try(v.endpoint_id, tostring(k))) => {
+      name        = try(v.name, try(v.endpoint_id, tostring(k)))
       project_id  = try(v.project_id, local.default_project_id)
       location    = try(v.location, try(v.region, "asia-south1"))
       network     = try(v.network, "default")
@@ -131,13 +119,9 @@ locals {
   # Access Levels (IP subnets, members, devices)
   raw_access_levels_input = try(local.raw_vpc_sc.access_levels, {})
   access_levels_map = {
-    for k, v in(
-      can(keys(local.raw_access_levels_input)) ? local.raw_access_levels_input : {
-        for idx, item in local.raw_access_levels_input : try(item.name, "level-${idx}") => item
-      }
-      ) : k => {
-      name                   = try(v.name, k)
-      title                  = try(v.title, try(v.name, k))
+    for k, v in local.raw_access_levels_input : try(v.name, tostring(k)) => {
+      name                   = try(v.name, tostring(k))
+      title                  = try(v.title, try(v.name, tostring(k)))
       description            = try(v.description, "Managed Access Level")
       combining_function     = try(v.combining_function, "AND")
       ip_subnetworks         = try(v.ip_subnetworks, [])
@@ -151,13 +135,9 @@ locals {
   # Service Perimeters (Protected resources, restricted services, ingress/egress)
   raw_perimeters_input = try(local.raw_vpc_sc.service_perimeters, {})
   perimeters_map = {
-    for k, v in(
-      can(keys(local.raw_perimeters_input)) ? local.raw_perimeters_input : {
-        for idx, item in local.raw_perimeters_input : try(item.name, "perimeter-${idx}") => item
-      }
-      ) : k => {
-      name                      = try(v.name, k)
-      title                     = try(v.title, try(v.name, k))
+    for k, v in local.raw_perimeters_input : try(v.name, tostring(k)) => {
+      name                      = try(v.name, tostring(k))
+      title                     = try(v.title, try(v.name, tostring(k)))
       description               = try(v.description, "Managed VPC Service Controls Perimeter")
       perimeter_type            = try(v.perimeter_type, "PERIMETER_TYPE_REGULAR")
       use_explicit_dry_run_spec = try(v.use_explicit_dry_run_spec, false)
