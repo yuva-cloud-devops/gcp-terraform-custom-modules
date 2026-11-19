@@ -30,11 +30,11 @@ resource "google_access_context_manager_access_level" "access_levels" {
       dynamic "device_policy" {
         for_each = each.value.device_policy != null ? [each.value.device_policy] : []
         content {
-          require_screenlock               = try(device_policy.value.require_screenlock, false)
+          require_screen_lock              = try(device_policy.value.require_screen_lock, try(device_policy.value.require_screenlock, false))
           require_admin_approval           = try(device_policy.value.require_admin_approval, false)
           require_corp_owned               = try(device_policy.value.require_corp_owned, false)
-          allowed_encryption_statuses      = try(device_policy.value.allowed_encryption_statuses, [])
-          allowed_device_management_levels = try(device_policy.value.allowed_device_management_levels, [])
+          allowed_encryption_statuses      = try(device_policy.value.allowed_encryption_statuses, null)
+          allowed_device_management_levels = try(device_policy.value.allowed_device_management_levels, null)
         }
       }
     }
