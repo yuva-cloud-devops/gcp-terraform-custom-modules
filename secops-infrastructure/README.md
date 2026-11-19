@@ -44,3 +44,8 @@ When provisioning SecOps infrastructure, execute modules in this dependency orde
 - **Purpose**: Declarative provisioning of Cloud KMS Keyrings (regional, multi-regional, global), CryptoKeys (Software & FIPS 140-2 Level 3 HSM), automated rotation schedules, CMEK service agent delegations, and Secret Manager secrets with automatic or multi-region user-managed replication and CEL-based IAM policies.
 - **Documentation**: [`crypto-secrets-infra/README.md`](./crypto-secrets-infra/README.md)
 - **Reference Example**: [`examples/secops/crypto-secrets-setup/`](../examples/secops/crypto-secrets-setup/)
+
+### 2. `audit-compliance-infra`
+- **Purpose**: Declarative provisioning of Google Cloud Data Access Audit Logging (Project/Folder/Org scopes), centralized SIEM log routing (Storage, BigQuery, Pub/Sub), automated writer identity IAM delegation, and built-in CIS Google Cloud Platform Foundations Benchmark Section 2 log-based security metrics.
+- **Documentation**: [`audit-compliance-infra/README.md`](./audit-compliance-infra/README.md)
+- **Reference Example**: [`examples/secops/audit-compliance-setup/`](../examples/secops/audit-compliance-setup/)

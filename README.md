@@ -120,16 +120,27 @@ gcp-terraform-custom-modules/
 │       └── README.md
 ├── secops-infrastructure/                    # Security Operations (SecOps) & Cryptography domain
 │   ├── README.md                             # SecOps domain overview & implementation sequence
-│   └── crypto-secrets-infra/                 # Cloud KMS (CMEK/HSM) & Secret Manager module
-│       ├── 0-locals.tf                       # Dynamic YAML parser, data transformer & CMEK resolver
-│       ├── 1-kms-keyrings.tf                 # Keyring declarations
-│       ├── 2-kms-keys.tf                     # Symmetric (Software/HSM) & Asymmetric CryptoKeys
-│       ├── 3-kms-iam.tf                      # Keyring, CryptoKey, and Project KMS IAM member bindings
-│       ├── 4-secret-manager.tf               # Secret Manager secrets (Automatic/User-managed replication)
-│       ├── 5-secret-versions.tf              # Optional initial secret version payload management
-│       ├── 6-secret-iam.tf                   # Secret-level & Project-level Secret Manager IAM bindings
+│   ├── crypto-secrets-infra/                 # Cloud KMS (CMEK/HSM) & Secret Manager module
+│   │   ├── 0-locals.tf                       # Dynamic YAML parser, data transformer & CMEK resolver
+│   │   ├── 1-kms-keyrings.tf                 # Keyring declarations
+│   │   ├── 2-kms-keys.tf                     # Symmetric (Software/HSM) & Asymmetric CryptoKeys
+│   │   ├── 3-kms-iam.tf                      # Keyring, CryptoKey, and Project KMS IAM member bindings
+│   │   ├── 4-secret-manager.tf               # Secret Manager secrets (Automatic/User-managed replication)
+│   │   ├── 5-secret-versions.tf              # Optional initial secret version payload management
+│   │   ├── 6-secret-iam.tf                   # Secret-level & Project-level Secret Manager IAM bindings
+│   │   ├── variables.tf                      # Input variables
+│   │   ├── outputs.tf                        # KMS, Secret Manager, and statistical summary outputs
+│   │   ├── versions.tf                       # Provider constraints
+│   │   └── README.md                         # Detailed module documentation
+│   └── audit-compliance-infra/               # Data Access Audit Logs & Centralized SIEM Log Sinks module
+│       ├── 0-locals.tf                       # Dynamic YAML parser, URI resolver & CIS filter maps
+│       ├── 1-audit-config.tf                 # Project/Folder/Org Data Access Audit Log configs
+│       ├── 2-log-destinations.tf             # Compliance GCS (WORM), BigQuery, and Pub/Sub topics
+│       ├── 3-log-sinks.tf                    # Centralized Cloud Logging sinks with exclusions
+│       ├── 4-sink-iam.tf                     # Automated sink writer identity IAM delegation
+│       ├── 5-security-metrics.tf             # CIS GCP Benchmark (2.4-2.12) log-based metrics
 │       ├── variables.tf                      # Input variables
-│       ├── outputs.tf                        # KMS, Secret Manager, and statistical summary outputs
+│       ├── outputs.tf                        # Sinks, writer identities, destinations & metrics
 │       ├── versions.tf                       # Provider constraints
 │       └── README.md                         # Detailed module documentation
 ├── examples/                                 # Reference implementations & sample setups
@@ -143,7 +154,8 @@ gcp-terraform-custom-modules/
 │   │   ├── psc-setup/                        # Private Service Connect deployment example
 │   │   └── vpn-setup/                        # HA Cloud VPN site-to-site deployment example
 │   └── secops/
-│       └── crypto-secrets-setup/             # Cloud KMS (HSM/CMEK) & Secret Manager deployment example
+│       ├── crypto-secrets-setup/             # Cloud KMS (HSM/CMEK) & Secret Manager deployment example
+│       └── audit-compliance-setup/           # SIEM Log Sinks, WORM Storage & CIS Metrics deployment example
 ├── .gitignore                                # Git ignore rules
 └── README.md                                 # Root repository documentation
 ```
@@ -163,6 +175,7 @@ gcp-terraform-custom-modules/
 | **Networking** | **VPC Network Peering (Automated Bi-directional Handshake)** | Declarative Google Cloud VPC Network Peering via YAML. Provisions bi-directional or uni-directional peering connections with automatic reverse peering creation, route exchange controls (custom routes, public subnets), and dependency ordering. | [`networking-infrastructure/network-peering`](./networking-infrastructure/network-peering/) |
 | **Networking** | **High Availability (HA) Cloud VPN (99.99% SLA)** | Declarative Google Cloud HA VPN management via YAML. Provisions dual-interface gateways, external on-premises peer gateways, redundant IPsec tunnels, Cloud Router interfaces, and dynamic eBGP sessions with BFD support. | [`networking-infrastructure/ha-cloud-vpn`](./networking-infrastructure/ha-cloud-vpn/) |
 | **SecOps** | **Crypto & Secrets (Cloud KMS & Secret Manager)** | Dynamic YAML-driven cryptographic infrastructure and enterprise secrets management. Provisions Cloud KMS Keyrings (regional/multi-regional/global), CryptoKeys (Software & FIPS 140-2 Level 3 HSM), CMEK delegation, automated rotation schedules, Secret Manager secrets (automatic & user-managed multi-region replication, CMEK wrapping), rotation alerts, and CEL IAM policies. | [`secops-infrastructure/crypto-secrets-infra`](./secops-infrastructure/crypto-secrets-infra/) |
+| **SecOps** | **Audit & Compliance (Audit Logs, SIEM Sinks & CIS Metrics)** | Dynamic YAML-driven audit and compliance infrastructure. Provisions Project/Folder/Org Data Access Audit Logs (Admin Read, Data Read, Data Write), centralized SIEM log sinks to WORM Cloud Storage, BigQuery analytics datasets, and Pub/Sub streaming topics, with automated sink writer IAM delegation and 9 built-in CIS GCP Foundations Benchmark Section 2 security metrics. | [`secops-infrastructure/audit-compliance-infra`](./secops-infrastructure/audit-compliance-infra/) |
 
 ---
 
@@ -208,7 +221,18 @@ module "crypto_secrets" {
 
 ---
 
-### Example 3: Hierarchical Firewall Guardrails
+### Example 4: Audit & Compliance Infrastructure (SIEM Sinks & CIS Metrics)
+
+```hcl
+module "audit_compliance" {
+  source           = "git::https://github.com/yuva-cloud-devops/gcp-terraform-custom-modules.git//secops-infrastructure/audit-compliance-infra?ref=main"
+  config_file_path = "${path.module}/audit-compliance.yaml"
+}
+```
+
+---
+
+### Example 5: Hierarchical Firewall Guardrails
 
 ```hcl
 module "hierarchical_firewalls" {
@@ -219,7 +243,7 @@ module "hierarchical_firewalls" {
 
 ---
 
-### Example 4: Enterprise Cloud DNS Management
+### Example 6: Enterprise Cloud DNS Management
 
 #### 1. Define DNS zones and records in `dns.yaml`:
 

@@ -1,0 +1,94 @@
+# ==============================================================================
+# Example: Audit & Compliance Infrastructure Configuration
+# ==============================================================================
+# Demonstrates:
+# - Enabling Data Access Audit Logs (Admin Read, Data Read, Data Write)
+# - Managed Cold Storage Bucket (versioned, WORM retention policy)
+# - Managed BigQuery Dataset for SIEM analytics
+# - Managed Pub/Sub Topic for real-time SIEM streaming
+# - Centralized Cloud Logging Sinks with automated IAM writer delegation
+# - Automated CIS Google Cloud Platform Foundations Benchmark Security Metrics
+# ==============================================================================
+
+project_id: "yuvaraj-internal-project"
+default_location: "asia-south1"
+
+common_labels:
+  environment: "production"
+  department: "secops"
+  managed_by: "terraform"
+  compliance: "cis-benchmark-v3"
+
+# ------------------------------------------------------------------------------
+# 1. Data Access Audit Logs Configuration
+# ------------------------------------------------------------------------------
+audit_logs:
+  scope: "project"
+  target_id: "yuvaraj-internal-project"
+  services:
+    - service: "allServices"
+      log_types:
+        - "ADMIN_READ"
+        - "DATA_READ"
+        - "DATA_WRITE"
+      exempted_members: []
+
+# ------------------------------------------------------------------------------
+# 2. Managed Audit Destinations
+# ------------------------------------------------------------------------------
+destinations:
+  storage_buckets:
+    - name: "secops-audit-cold-storage-yuvaraj"
+      location: "asia-south1"
+      storage_class: "STANDARD"
+      versioning: true
+      retention_policy:
+        retention_period_days: 365
+        is_locked: false
+      lifecycle_rules:
+        - action:
+            type: "SetStorageClass"
+            storage_class: "COLDLINE"
+          condition:
+            age: 90
+
+  bigquery_datasets:
+    - dataset_id: "secops_audit_analytics"
+      location: "asia-south1"
+      description: "Centralized Audit Analytics Dataset for Threat Hunting"
+      default_table_expiration_ms: 7776000000 # 90 days
+
+  pubsub_topics:
+    - name: "siem-audit-stream"
+
+# ------------------------------------------------------------------------------
+# 3. Centralized Log Sinks
+# ------------------------------------------------------------------------------
+log_sinks:
+  - name: "sink-cold-storage-audit"
+    scope: "project"
+    destination: "bucket:secops-audit-cold-storage-yuvaraj"
+    filter: 'protoPayload.@type="type.googleapis.com/google.cloud.audit.AuditLog"'
+    exclusions:
+      - name: "exclude-liveness-probes"
+        filter: 'protoPayload.methodName="google.monitoring.v3.UptimeCheckService.GetUptimeCheckConfig"'
+
+  - name: "sink-bigquery-security-logs"
+    scope: "project"
+    destination: "bigquery:secops_audit_analytics"
+    filter: 'protoPayload.@type="type.googleapis.com/google.cloud.audit.AuditLog"'
+
+  - name: "sink-pubsub-siem-stream"
+    scope: "project"
+    destination: "pubsub:siem-audit-stream"
+    filter: 'severity >= WARNING'
+
+# ------------------------------------------------------------------------------
+# 4. Security Metrics (CIS Benchmark + Custom)
+# ------------------------------------------------------------------------------
+security_metrics:
+  enable_cis_benchmarks: true
+  custom_metrics:
+    - name: "secret_manager_unauthorized_access"
+      description: "Alerts on unauthorized Secret Manager access attempts"
+      filter: 'protoPayload.serviceName="secretmanager.googleapis.com" AND protoPayload.status.code=7'
