@@ -198,6 +198,18 @@ gcp-terraform-custom-modules/
 │   ├── outputs.tf                            # Buckets, disks, snapshot policies & Filestore outputs
 │   ├── versions.tf                           # Provider constraints
 │   └── README.md                             # Detailed module documentation
+├── database-infrastructure/                  # Enterprise Database Infrastructure (Option A)
+│   ├── 0-locals.tf                           # Dynamic YAML parser, schema normalization & conditional defaults
+│   ├── 1-cloud-sql.tf                        # Cloud SQL instances (Regional HA), DBs & Users
+│   ├── 2-alloydb.tf                          # AlloyDB clusters, primary instances & read pools
+│   ├── 3-memorystore-redis.tf                # Memorystore Redis (STANDARD_HA failover & RDB)
+│   ├── 4-firestore.tf                        # Firestore NoSQL (PITR, delete protection & backups)
+│   ├── 5-spanner.tf                          # Cloud Spanner (Global 99.999% SLA, PITR & backup schedules)
+│   ├── 6-bigtable.tf                         # Cloud Bigtable (Low-latency NoSQL, multi-cluster HA & tables)
+│   ├── variables.tf                          # Input variables
+│   ├── outputs.tf                            # Connection strings, private IPs, IDs & metrics
+│   ├── versions.tf                           # Provider constraints
+│   └── README.md                             # Detailed module documentation
 ├── examples/                                 # Reference implementations & sample setups
 │   ├── foundation/                           # Enterprise landing zone deployment example
 │   ├── network/
@@ -215,8 +227,9 @@ gcp-terraform-custom-modules/
 │   │   ├── edge-security-setup/              # Cloud Armor WAF, OWASP mitigation & Rate Limiting example
 │   │   ├── threat-posture-setup/             # SCC Notifications & Cloud Asset Inventory Feeds example
 │   │   ├── pki-data-security-setup/          # Private CA Service, Certificate Manager & Cloud DLP example
-│   │   └── container-security-setup/         # Binary Authorization & Container Analysis setup example
-│   └── storage/                              # Unified GCS, Persistent Disks & Filestore deployment example
+│   │   ├── container-security-setup/         # Binary Authorization & Container Analysis setup example
+│   │   └── storage/                          # Unified GCS, Persistent Disks & Filestore deployment example
+│   └── database/                             # Enterprise Cloud SQL, AlloyDB, Redis & Firestore example
 ├── .gitignore                                # Git ignore rules
 └── README.md                                 # Root repository documentation
 ```
@@ -243,6 +256,7 @@ gcp-terraform-custom-modules/
 | **SecOps** | **PKI & Data Security (Private CA, Certificate Manager & Cloud DLP)** | Dynamic YAML-driven internal cryptographic trust, TLS certificate management, and automated sensitive data discovery. Deploys Google Cloud Certificate Authority Service (CAS) for `DEVOPS` and `ENTERPRISE` CA pools and Root/Subordinate CAs with hardware-backed keys, Certificate Manager for DNS authorizations and HTTPS Load Balancer Certificate Maps, and Cloud Data Loss Prevention (Cloud DLP / Sensitive Data Protection) for inspection templates, character masking de-identification, and scheduled storage/BigQuery scan triggers. | [`secops-infrastructure/pki-data-security-infra`](./secops-infrastructure/pki-data-security-infra/) |
 | **SecOps** | **Container Security (Binary Authorization & Grafeas)** | Declarative YAML-driven container admission control and supply chain provenance. Deploys Container Analysis Grafeas notes for vulnerability scan and security approvals, Binary Authorization attestors with KMS/PGP keys, builder/verifier IAM, and admission policies. | [`secops-infrastructure/container-security-infra`](./secops-infrastructure/container-security-infra/) |
 | **Storage** | **Storage Infrastructure (GCS, Persistent Disks & Filestore)** | Declarative unified storage infrastructure provisioned via YAML. Efficiently and conditionally creates Cloud Storage (GCS) buckets with lifecycle rules, UBLA, WORM, and CMEK; Compute Persistent Disks (Zonal & Regional HA) with automated snapshot schedules and DR attachments; and Filestore NFS shares with granular network export options. | [`storage-infrastructure`](./storage-infrastructure/) |
+| **Database** | **Database Infrastructure (Cloud SQL, AlloyDB, Redis, Firestore, Spanner, Bigtable)** | Declarative unified database infrastructure provisioned via YAML (Option A). Conditionally creates Cloud SQL (PostgreSQL/MySQL/SQL Server with Regional HA, PSA/Public IP, and PITR); AlloyDB for PostgreSQL clusters and Read Pools; Memorystore Redis with `STANDARD_HA` cross-zone failover, RDB persistence snapshots, and AUTH; Firestore NoSQL databases with PITR; Cloud Spanner with 99.999% SLA, PITR, and backup schedules; and Cloud Bigtable with multi-cluster replication. Defaults to project default VPC when no network is specified. | [`database-infrastructure`](./database-infrastructure/) |
 
 
 
