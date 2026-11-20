@@ -171,13 +171,22 @@ gcp-terraform-custom-modules/
 │   │   ├── outputs.tf                        # Notification IDs, feeds, topics & summary metrics
 │   │   ├── versions.tf                       # Provider constraints
 │   │   └── README.md                         # Detailed module documentation
-│   └── pki-data-security-infra/              # CAS (Private CA), Certificate Manager, Cloud DLP
-│       ├── 0-locals.tf                       # Dynamic YAML parser, subject mappings & DLP transformers
-│       ├── 1-private-ca-service.tf           # Private CA pools (DevOps/Enterprise) & Root/Subordinate CAs
-│       ├── 2-certificate-manager.tf          # DNS Authorizations, Issuance Configs, Cert Maps & Entries
-│       ├── 3-cloud-dlp.tf                    # Inspection templates, De-identification masking & Job Triggers
+│   ├── pki-data-security-infra/              # CAS (Private CA), Certificate Manager, Cloud DLP
+│   │   ├── 0-locals.tf                       # Dynamic YAML parser, subject mappings & DLP transformers
+│   │   ├── 1-private-ca-service.tf           # Private CA pools (DevOps/Enterprise) & Root/Subordinate CAs
+│   │   ├── 2-certificate-manager.tf          # DNS Authorizations, Issuance Configs, Cert Maps & Entries
+│   │   ├── 3-cloud-dlp.tf                    # Inspection templates, De-identification masking & Job Triggers
+│   │   ├── variables.tf                      # Input variables
+│   │   ├── outputs.tf                        # CA pools, cert maps, DLP template names & IDs
+│   │   ├── versions.tf                       # Provider constraints
+│   │   └── README.md                         # Detailed module documentation
+│   └── container-security-infra/             # Binary Authorization & Container Analysis (Grafeas)
+│       ├── 0-locals.tf                       # Dynamic YAML parser, reference resolvers & IAM mappings
+│       ├── 1-container-analysis.tf           # Container Analysis Grafeas notes & builder IAM
+│       ├── 2-binary-authorization-attestors.tf # Attestors (Cloud KMS / PGP keys) & Verifier IAM
+│       ├── 3-binary-authorization-policy.tf  # Deploy-time admission policy & cluster admission rules
 │       ├── variables.tf                      # Input variables
-│       ├── outputs.tf                        # CA pools, cert maps, DLP template names & IDs
+│       ├── outputs.tf                        # Notes, attestors & policy outputs
 │       ├── versions.tf                       # Provider constraints
 │       └── README.md                         # Detailed module documentation
 ├── examples/                                 # Reference implementations & sample setups
@@ -196,7 +205,8 @@ gcp-terraform-custom-modules/
 │       ├── zero-trust-setup/                 # Keyless GitHub Actions WIF & IAP TCP Tunneling example
 │       ├── edge-security-setup/              # Cloud Armor WAF, OWASP mitigation & Rate Limiting example
 │       ├── threat-posture-setup/             # SCC Notifications & Cloud Asset Inventory Feeds example
-│       └── pki-data-security-setup/          # Private CA Service, Certificate Manager & Cloud DLP example
+│       ├── pki-data-security-setup/          # Private CA Service, Certificate Manager & Cloud DLP example
+│       └── container-security-setup/         # Binary Authorization & Container Analysis setup example
 ├── .gitignore                                # Git ignore rules
 └── README.md                                 # Root repository documentation
 ```

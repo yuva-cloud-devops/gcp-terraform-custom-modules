@@ -70,6 +70,12 @@ When provisioning SecOps infrastructure, execute modules in this dependency orde
 - **Documentation**: [`pki-data-security-infra/README.md`](./pki-data-security-infra/README.md)
 - **Reference Example**: [`examples/secops/pki-data-security-setup/`](../examples/secops/pki-data-security-setup/)
 
+### 7. `container-security-infra`
+- **Purpose**: Declarative provisioning of Software Supply Chain Security, Container Integrity, and Deploy-Time Admission Controls via YAML. Deploys Container Analysis (Grafeas) metadata notes for vulnerability scan and security approvals, Binary Authorization attestors with cryptographic verification authorities, builder and verifier IAM bindings, and deploy-time admission policies supporting global system allowlists and cluster-specific dry-run or enforced blocking.
+- **Documentation**: [`container-security-infra/README.md`](./container-security-infra/README.md)
+- **Reference Example**: [`examples/secops/container-security-setup/`](../examples/secops/container-security-setup/)
+
+
 
 
 

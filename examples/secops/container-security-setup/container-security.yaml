@@ -1,0 +1,36 @@
+container_security:
+  project_id: "yuvaraj-internal-project"
+
+  # =========================================================================
+  # 1. CONTAINER ANALYSIS (GRAFEAS) NOTES
+  # =========================================================================
+  container_analysis_notes:
+    secops-security-attestation-note:
+      short_description: "SecOps Security Scan Attestation Authority"
+      long_description: "Grafeas note certifying that container image passed vulnerability scan and CI/CD security policies."
+      hint: "SecOps Security Scan Authority"
+
+  # =========================================================================
+  # 2. BINARY AUTHORIZATION ATTESTORS
+  # =========================================================================
+  attestors:
+    secops-security-attestor:
+      description: "Attestor verifying CI/CD vulnerability scanning and build provenance"
+      note_ref: "secops-security-attestation-note"
+
+  # =========================================================================
+  # 3. BINARY AUTHORIZATION DEPLOY-TIME POLICY
+  # =========================================================================
+  policy:
+    description: "SecOps Zero-Trust Container Admission Policy"
+    global_policy_evaluation_mode: "ENABLE"
+    admission_whitelist_patterns:
+      - "gcr.io/google_containers/*"
+      - "k8s.gcr.io/*"
+      - "gke.gcr.io/*"
+      - "gcr.io/stackdriver-agents/*"
+    default_admission_rule:
+      evaluation_mode: "REQUIRE_ATTESTATION"
+      enforcement_mode: "DRYRUN_AUDIT_LOG_ONLY"
+      require_attestations_by:
+        - "secops-security-attestor"
