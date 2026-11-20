@@ -86,7 +86,7 @@ locals {
     project_id                    = try(local.raw_policy.project_id, local.default_project_id)
     description                   = try(local.raw_policy.description, "SecOps Binary Authorization Policy")
     global_policy_evaluation_mode = try(local.raw_policy.global_policy_evaluation_mode, "ENABLE")
-    admission_whitelist_patterns  = try(local.raw_policy.admission_whitelist_patterns, [
+    admission_whitelist_patterns = try(local.raw_policy.admission_whitelist_patterns, [
       "gcr.io/google_containers/*",
       "k8s.gcr.io/*",
       "gke.gcr.io/*",

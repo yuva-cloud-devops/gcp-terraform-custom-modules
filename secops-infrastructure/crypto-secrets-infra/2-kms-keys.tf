@@ -9,12 +9,12 @@
 resource "google_kms_crypto_key" "keys" {
   for_each = local.kms_keys
 
-  name                       = each.value.name
-  key_ring                   = google_kms_key_ring.keyrings[each.value.keyring_key].id
-  purpose                    = each.value.purpose
-  destroy_scheduled_duration = each.value.destroy_scheduled_duration
+  name                          = each.value.name
+  key_ring                      = google_kms_key_ring.keyrings[each.value.keyring_key].id
+  purpose                       = each.value.purpose
+  destroy_scheduled_duration    = each.value.destroy_scheduled_duration
   skip_initial_version_creation = each.value.skip_initial_version_creation
-  labels                     = each.value.labels
+  labels                        = each.value.labels
 
   # Automatic rotation is only permitted on symmetric ENCRYPT_DECRYPT or RAW_ENCRYPT_DECRYPT keys
   rotation_period = (

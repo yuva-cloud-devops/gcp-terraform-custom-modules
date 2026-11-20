@@ -208,7 +208,7 @@ locals {
             ) : item.resolved_kms_key
           )
         }
-      ] : (
+        ] : (
         # If user did not specify explicit replicas, but CMEK key is regional, auto-bind replica to that region
         (item.resolved_kms_key != null && try(split("/", item.resolved_kms_key)[3], "") != "" && try(split("/", item.resolved_kms_key)[3], "") != "global") ? [
           {
@@ -304,7 +304,7 @@ locals {
         for key in distinct(compact(concat(
           [s.resolved_kms_key_name],
           [for r in s.user_managed_replicas : r.resolved_kms_key_name]
-        ))) : {
+          ))) : {
           grant_key     = "${s.project_id}--${replace(replace(key, "/", "_"), ":", "_")}"
           project_id    = s.project_id
           crypto_key_id = key

@@ -231,6 +231,7 @@ gcp-terraform-custom-modules/
 | **SecOps** | **Edge Security (Cloud Armor, Cloud IDS & VPC SC)** | Dynamic YAML-driven edge security, threat inspection, and perimeter enforcement. Deploys Cloud Armor Web Application Firewall (WAF) policies with OWASP Top 10 preconfigured rulesets (SQLi, XSS, LFI, RCE, Scanners), Layer 7 Adaptive Protection (ML DDoS defense), Layer 7 rate limiting/throttling, and Geo-fencing CEL expressions. Provisions Cloud IDS deep packet inspection (DPI) endpoints powered by Palo Alto Networks threat signatures, and Access Context Manager (ACM) VPC Service Controls perimeters to prevent data exfiltration. | [`secops-infrastructure/edge-security-infra`](./secops-infrastructure/edge-security-infra/) |
 | **SecOps** | **Threat & Posture Management (SCC & Cloud Asset Inventory)** | Dynamic YAML-driven continuous threat posture and asset drift management. Configures Security Command Center (SCC v2) project notification configs for real-time streaming of High/Critical security findings and anomalous IAM privilege escalations to Cloud Pub/Sub, continuous finding exports to BigQuery compliance data lakes, and Cloud Asset Inventory (CAI) real-time project feeds for instant detection of infrastructure drift across Firewalls, IAM, KMS, and Cloud Storage. | [`secops-infrastructure/threat-posture-infra`](./secops-infrastructure/threat-posture-infra/) |
 | **SecOps** | **PKI & Data Security (Private CA, Certificate Manager & Cloud DLP)** | Dynamic YAML-driven internal cryptographic trust, TLS certificate management, and automated sensitive data discovery. Deploys Google Cloud Certificate Authority Service (CAS) for `DEVOPS` and `ENTERPRISE` CA pools and Root/Subordinate CAs with hardware-backed keys, Certificate Manager for DNS authorizations and HTTPS Load Balancer Certificate Maps, and Cloud Data Loss Prevention (Cloud DLP / Sensitive Data Protection) for inspection templates, character masking de-identification, and scheduled storage/BigQuery scan triggers. | [`secops-infrastructure/pki-data-security-infra`](./secops-infrastructure/pki-data-security-infra/) |
+| **SecOps** | **Container Security (Binary Authorization & Grafeas)** | Declarative YAML-driven container admission control and supply chain provenance. Deploys Container Analysis Grafeas notes for vulnerability scan and security approvals, Binary Authorization attestors with KMS/PGP keys, builder/verifier IAM, and admission policies. | [`secops-infrastructure/container-security-infra`](./secops-infrastructure/container-security-infra/) |
 
 
 ---
@@ -266,29 +267,7 @@ module "shared_vpc" {
 
 ---
 
-### Example 3: Cryptography & Secrets Infrastructure (Cloud KMS & Secret Manager)
-
-```hcl
-module "crypto_secrets" {
-  source           = "git::https://github.com/yuva-cloud-devops/gcp-terraform-custom-modules.git//secops-infrastructure/crypto-secrets-infra?ref=main"
-  config_file_path = "${path.module}/crypto-secrets.yaml"
-}
-```
-
----
-
-### Example 4: Audit & Compliance Infrastructure (SIEM Sinks & CIS Metrics)
-
-```hcl
-module "audit_compliance" {
-  source           = "git::https://github.com/yuva-cloud-devops/gcp-terraform-custom-modules.git//secops-infrastructure/audit-compliance-infra?ref=main"
-  config_file_path = "${path.module}/audit-compliance.yaml"
-}
-```
-
----
-
-### Example 5: Hierarchical Firewall Guardrails
+### Example 3: Hierarchical Firewall Guardrails
 
 ```hcl
 module "hierarchical_firewalls" {
@@ -299,7 +278,7 @@ module "hierarchical_firewalls" {
 
 ---
 
-### Example 6: Enterprise Cloud DNS Management
+### Example 4: Enterprise Cloud DNS Management
 
 #### 1. Define DNS zones and records in `dns.yaml`:
 
@@ -456,25 +435,123 @@ module "ha_vpn" {
 
 ---
 
+### Example 8: Cryptography & Secrets Infrastructure (Cloud KMS & Secret Manager)
+
+```hcl
+module "crypto_secrets" {
+  source           = "git::https://github.com/yuva-cloud-devops/gcp-terraform-custom-modules.git//secops-infrastructure/crypto-secrets-infra?ref=main"
+  config_file_path = "${path.module}/crypto-secrets.yaml"
+}
+```
+
+---
+
+### Example 9: Audit & Compliance Infrastructure (SIEM Sinks & CIS Metrics)
+
+```hcl
+module "audit_compliance" {
+  source           = "git::https://github.com/yuva-cloud-devops/gcp-terraform-custom-modules.git//secops-infrastructure/audit-compliance-infra?ref=main"
+  config_file_path = "${path.module}/audit-compliance.yaml"
+}
+```
+
+---
+
+### Example 10: Zero Trust & Keyless Access (IAP & WIF)
+
+```hcl
+module "zero_trust" {
+  source           = "git::https://github.com/yuva-cloud-devops/gcp-terraform-custom-modules.git//secops-infrastructure/zero-trust-security-infra?ref=main"
+  config_file_path = "${path.module}/zero-trust.yaml"
+}
+```
+
+---
+
+### Example 11: Edge Security & Perimeter Defense (Cloud Armor, Cloud IDS & VPC SC)
+
+```hcl
+module "edge_security" {
+  source           = "git::https://github.com/yuva-cloud-devops/gcp-terraform-custom-modules.git//secops-infrastructure/edge-security-infra?ref=main"
+  config_file_path = "${path.module}/edge-security.yaml"
+}
+```
+
+---
+
+### Example 12: Threat & Posture Management (SCC & Cloud Asset Inventory)
+
+```hcl
+module "threat_posture" {
+  source           = "git::https://github.com/yuva-cloud-devops/gcp-terraform-custom-modules.git//secops-infrastructure/threat-posture-infra?ref=main"
+  config_file_path = "${path.module}/threat-posture.yaml"
+}
+```
+
+---
+
+### Example 13: PKI & Sensitive Data Protection (Private CA, Certificate Manager & Cloud DLP)
+
+```hcl
+module "pki_data_security" {
+  source           = "git::https://github.com/yuva-cloud-devops/gcp-terraform-custom-modules.git//secops-infrastructure/pki-data-security-infra?ref=main"
+  config_file_path = "${path.module}/pki-data-security.yaml"
+}
+```
+
+---
+
+### Example 14: Container Security & Supply Chain Integrity (Binary Authorization & Container Analysis)
+
+```hcl
+module "container_security" {
+  source           = "git::https://github.com/yuva-cloud-devops/gcp-terraform-custom-modules.git//secops-infrastructure/container-security-infra?ref=main"
+  config_file_path = "${path.module}/container-security.yaml"
+}
+```
+
+---
+
 ## Prerequisites
 
 1. **Terraform CLI**: Version `>= 1.5.0`
 2. **Google Cloud SDK (`gcloud`)**: Installed and authenticated (`gcloud auth application-default login`)
 3. **Required IAM Permissions**:
-   - **For Foundation**: `roles/resourcemanager.organizationAdmin`, `roles/resourcemanager.folderAdmin`, `roles/billing.user` (or `roles/billing.admin`), `roles/resourcemanager.tagAdmin`, `roles/essentialcontacts.admin`, and `roles/resourcemanager.lienModifier`
+   - **For Foundation**: `roles/resourcemanager.organizationAdmin`, `roles/resourcemanager.folderAdmin`, `roles/billing.user` (or `roles/billing.admin`), `roles/resourcemanager.tagAdmin`, `roles/essentialcontacts.admin`, `roles/orgpolicy.policyAdmin`, and `roles/resourcemanager.lienModifier`
    - **For Networking, PSC, VPC Peering & HA VPN**: `roles/compute.networkAdmin`, `roles/compute.securityAdmin`, and `roles/servicenetworking.networksAdmin`
    - **For Shared VPC**: `roles/compute.xpnAdmin` (at Folder/Org level) and `roles/resourcemanager.projectIamAdmin` (Host project)
    - **For Hierarchical Firewalls**: `roles/compute.orgFirewallPolicyAdmin` or `roles/compute.orgSecurityPolicyAdmin` (at Folder/Org level)
    - **For Cloud DNS**: `roles/dns.admin`
+   - **For SecOps Cryptography & Secrets**: `roles/cloudkms.admin` and `roles/secretmanager.admin`
+   - **For SecOps Audit & Compliance**: `roles/logging.configWriter`, `roles/storage.admin`, `roles/bigquery.admin`, `roles/pubsub.admin`, and `roles/monitoring.admin`
+   - **For SecOps Zero Trust**: `roles/iam.workloadIdentityPoolAdmin`, `roles/iam.serviceAccountAdmin`, `roles/iap.admin`, and `roles/compute.securityAdmin`
+   - **For SecOps Edge Security**: `roles/compute.securityAdmin`, `roles/ids.admin`, and `roles/accesscontextmanager.policyAdmin`
+   - **For SecOps Threat & Posture**: `roles/securitycenter.notificationConfigEditor` (or `roles/securitycenter.admin`) and `roles/cloudasset.owner`
+   - **For SecOps PKI & Data Security**: `roles/privateca.admin`, `roles/certificatemanager.owner`, and `roles/dlp.admin`
+   - **For SecOps Container Security**: `roles/binaryauthorization.attestorsAdmin`, `roles/binaryauthorization.policyAdmin`, and `roles/containeranalysis.notesEditor`
 4. **Required GCP APIs Enabled** (on administrative/seed project):
    - `cloudresourcemanager.googleapis.com`
    - `serviceusage.googleapis.com`
    - `cloudbilling.googleapis.com`
    - `iam.googleapis.com`
+   - `orgpolicy.googleapis.com`
    - `essentialcontacts.googleapis.com`
    - `compute.googleapis.com`
    - `servicenetworking.googleapis.com`
    - `dns.googleapis.com`
+   - `cloudkms.googleapis.com`
+   - `secretmanager.googleapis.com`
+   - `logging.googleapis.com`
+   - `monitoring.googleapis.com`
+   - `accesscontextmanager.googleapis.com`
+   - `ids.googleapis.com`
+   - `securitycenter.googleapis.com`
+   - `cloudasset.googleapis.com`
+   - `privateca.googleapis.com`
+   - `certificatemanager.googleapis.com`
+   - `dlp.googleapis.com`
+   - `binaryauthorization.googleapis.com`
+   - `containeranalysis.googleapis.com`
 
 ---
 

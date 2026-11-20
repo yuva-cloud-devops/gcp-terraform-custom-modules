@@ -34,15 +34,15 @@ locals {
 
   ca_pools_map = {
     for k, v in local.raw_ca_pools : try(v.name, tostring(k)) => {
-      name             = try(v.name, tostring(k))
-      project_id       = try(v.project_id, local.default_project_id)
-      location         = try(v.location, local.default_location)
-      tier             = upper(try(v.tier, "DEVOPS"))
-      description      = try(v.description, "Managed Private CA Pool")
-      issuance_policy  = try(v.issuance_policy, null)
-      publish_ca_cert  = try(v.publishing_options.publish_ca_cert, try(v.publish_ca_cert, true))
-      publish_crl      = upper(try(v.tier, "DEVOPS")) == "DEVOPS" ? false : try(v.publishing_options.publish_crl, try(v.publish_crl, true))
-      labels           = merge(local.common_labels, try(v.labels, {}))
+      name            = try(v.name, tostring(k))
+      project_id      = try(v.project_id, local.default_project_id)
+      location        = try(v.location, local.default_location)
+      tier            = upper(try(v.tier, "DEVOPS"))
+      description     = try(v.description, "Managed Private CA Pool")
+      issuance_policy = try(v.issuance_policy, null)
+      publish_ca_cert = try(v.publishing_options.publish_ca_cert, try(v.publish_ca_cert, true))
+      publish_crl     = upper(try(v.tier, "DEVOPS")) == "DEVOPS" ? false : try(v.publishing_options.publish_crl, try(v.publish_crl, true))
+      labels          = merge(local.common_labels, try(v.labels, {}))
     }
   }
 
@@ -53,22 +53,22 @@ locals {
 
   certificate_authorities_map = {
     for k, v in local.raw_cas : try(v.ca_id, try(v.name, tostring(k))) => {
-      ca_id            = try(v.ca_id, try(v.name, tostring(k)))
-      pool_name        = try(v.ca_pool, try(v.pool, try(v.pool_name, tostring(k))))
-      project_id       = try(v.project_id, local.default_project_id)
-      location         = try(v.location, local.default_location)
-      type             = upper(try(v.type, "SELF_SIGNED"))
-      lifetime         = try(v.lifetime, "315360000s") # Default 10 years
-      algorithm        = try(v.key_spec.algorithm, try(v.algorithm, "RSA_PKCS1_4096_SHA256"))
-      
+      ca_id      = try(v.ca_id, try(v.name, tostring(k)))
+      pool_name  = try(v.ca_pool, try(v.pool, try(v.pool_name, tostring(k))))
+      project_id = try(v.project_id, local.default_project_id)
+      location   = try(v.location, local.default_location)
+      type       = upper(try(v.type, "SELF_SIGNED"))
+      lifetime   = try(v.lifetime, "315360000s") # Default 10 years
+      algorithm  = try(v.key_spec.algorithm, try(v.algorithm, "RSA_PKCS1_4096_SHA256"))
+
       # Subject Attributes
-      common_name      = try(v.subject.common_name, try(v.common_name, "Internal Root Certificate Authority"))
-      organization     = try(v.subject.organization, try(v.organization, "SecOps Internal Trust"))
-      country_code     = try(v.subject.country_code, try(v.country_code, "IN"))
-      org_unit         = try(v.subject.organizational_unit, try(v.organizational_unit, null))
-      locality         = try(v.subject.locality, try(v.locality, null))
-      province         = try(v.subject.province, try(v.province, null))
-      dns_names        = try(v.subject_alt_name.dns_names, try(v.dns_names, []))
+      common_name  = try(v.subject.common_name, try(v.common_name, "Internal Root Certificate Authority"))
+      organization = try(v.subject.organization, try(v.organization, "SecOps Internal Trust"))
+      country_code = try(v.subject.country_code, try(v.country_code, "IN"))
+      org_unit     = try(v.subject.organizational_unit, try(v.organizational_unit, null))
+      locality     = try(v.subject.locality, try(v.locality, null))
+      province     = try(v.subject.province, try(v.province, null))
+      dns_names    = try(v.subject_alt_name.dns_names, try(v.dns_names, []))
 
       # Deletion lifecycle flags for smooth testing and lifecycle control
       deletion_protection                    = try(v.deletion_protection, false)
@@ -121,24 +121,24 @@ locals {
 
   certificates_map = {
     for k, v in local.raw_certificates : try(v.name, tostring(k)) => {
-      name         = try(v.name, tostring(k))
-      project_id   = try(v.project_id, local.default_project_id)
-      location     = try(v.location, "global")
-      description  = try(v.description, "Managed TLS Certificate")
-      scope        = try(v.scope, null)
-      
+      name        = try(v.name, tostring(k))
+      project_id  = try(v.project_id, local.default_project_id)
+      location    = try(v.location, "global")
+      description = try(v.description, "Managed TLS Certificate")
+      scope       = try(v.scope, null)
+
       # Managed cert config
       is_managed   = can(v.managed) || (!can(v.self_managed))
       domains      = try(v.managed.domains, try(v.domains, []))
       dns_auths    = try(v.managed.dns_authorizations, try(v.dns_authorizations, []))
       issuance_cfg = try(v.managed.issuance_config, try(v.issuance_config, null))
-      
+
       # Self-managed cert config (PEM)
       is_self_managed = can(v.self_managed)
       pem_cert        = try(v.self_managed.pem_certificate, null)
       pem_key         = try(v.self_managed.pem_private_key, null)
 
-      labels       = merge(local.common_labels, try(v.labels, {}))
+      labels = merge(local.common_labels, try(v.labels, {}))
     }
   }
 
@@ -176,17 +176,17 @@ locals {
   # ----------------------------------------------------------------------------
   # 7. Cloud Data Loss Prevention (DLP): Inspect Templates
   # ----------------------------------------------------------------------------
-  raw_dlp = try(local.raw_root.dlp, {})
+  raw_dlp               = try(local.raw_root.dlp, {})
   raw_inspect_templates = try(local.raw_dlp.inspect_templates, {})
 
   inspect_templates_map = {
     for k, v in local.raw_inspect_templates : try(v.template_id, try(v.name, tostring(k))) => {
-      template_id           = try(v.template_id, try(v.name, tostring(k)))
-      project_id            = try(v.project_id, local.default_project_id)
-      location              = try(v.location, "global")
-      display_name          = try(v.display_name, try(v.template_id, tostring(k)))
-      description           = try(v.description, "Cloud DLP Inspection Template")
-      info_types            = try(v.info_types, ["EMAIL_ADDRESS", "CREDIT_CARD_NUMBER", "AUTH_TOKEN", "GCP_API_KEY"])
+      template_id              = try(v.template_id, try(v.name, tostring(k)))
+      project_id               = try(v.project_id, local.default_project_id)
+      location                 = try(v.location, "global")
+      display_name             = try(v.display_name, try(v.template_id, tostring(k)))
+      description              = try(v.description, "Cloud DLP Inspection Template")
+      info_types               = try(v.info_types, ["EMAIL_ADDRESS", "CREDIT_CARD_NUMBER", "AUTH_TOKEN", "GCP_API_KEY"])
       min_likelihood           = try(v.min_likelihood, "LIKELY")
       include_quote            = try(v.include_quote, false)
       max_findings_per_item    = try(v.max_findings_per_item, null)
@@ -222,20 +222,20 @@ locals {
 
   job_triggers_map = {
     for k, v in local.raw_job_triggers : try(v.trigger_id, try(v.name, tostring(k))) => {
-      trigger_id               = try(v.trigger_id, try(v.name, tostring(k)))
-      project_id               = try(v.project_id, local.default_project_id)
-      location                 = try(v.location, "global")
-      display_name             = try(v.display_name, try(v.trigger_id, tostring(k)))
-      description              = try(v.description, "Cloud DLP Periodic Discovery Job Trigger")
-      status                   = upper(try(v.status, "HEALTHY"))
-      inspect_template_name    = try(v.inspect_template_name, try(v.inspect_template, null))
+      trigger_id                 = try(v.trigger_id, try(v.name, tostring(k)))
+      project_id                 = try(v.project_id, local.default_project_id)
+      location                   = try(v.location, "global")
+      display_name               = try(v.display_name, try(v.trigger_id, tostring(k)))
+      description                = try(v.description, "Cloud DLP Periodic Discovery Job Trigger")
+      status                     = upper(try(v.status, "HEALTHY"))
+      inspect_template_name      = try(v.inspect_template_name, try(v.inspect_template, null))
       recurrence_period_duration = try(v.schedule, try(v.recurrence_period_duration, "86400s"))
-      
+
       # Storage Targets
-      cloud_storage_bucket     = try(v.cloud_storage.bucket, try(v.gcs_bucket, null))
-      bigquery_dataset         = try(v.bigquery.dataset_id, try(v.dataset_id, null))
-      bigquery_table           = try(v.bigquery.table_id, try(v.table_id, null))
-      pubsub_topic             = try(v.pubsub_topic, null)
+      cloud_storage_bucket = try(v.cloud_storage.bucket, try(v.gcs_bucket, null))
+      bigquery_dataset     = try(v.bigquery.dataset_id, try(v.dataset_id, null))
+      bigquery_table       = try(v.bigquery.table_id, try(v.table_id, null))
+      pubsub_topic         = try(v.pubsub_topic, null)
     }
   }
 }

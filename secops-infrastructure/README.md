@@ -75,7 +75,3 @@ When provisioning SecOps infrastructure, execute modules in this dependency orde
 - **Documentation**: [`container-security-infra/README.md`](./container-security-infra/README.md)
 - **Reference Example**: [`examples/secops/container-security-setup/`](../examples/secops/container-security-setup/)
 
-
-
-
-
