@@ -1,0 +1,71 @@
+storage_infrastructure:
+  project_id: "yuvaraj-internal-project"
+  region: "asia-south1"
+
+  # =========================================================================
+  # 1. CLOUD STORAGE (GCS) - [OPTIONAL: Created because defined below]
+  # =========================================================================
+  gcs:
+    buckets:
+      secops-demo-app-bucket-9862:
+        location: "asia-south1"
+        storage_class: "STANDARD"
+        uniform_bucket_level_access: true
+        public_access_prevention: "enforced"
+        versioning: true
+        force_destroy: true
+        lifecycle_rules:
+          - action:
+              type: "SetStorageClass"
+              storage_class: "NEARLINE"
+            condition:
+              age: 30
+          - action:
+              type: "Delete"
+            condition:
+              age: 365
+
+  # =========================================================================
+  # 2. COMPUTE PERSISTENT DISKS & SNAPSHOT POLICIES - [OPTIONAL]
+  # =========================================================================
+  compute_disks:
+    snapshot_policies:
+      daily-backup-policy:
+        region: "asia-south1"
+        schedule:
+          daily:
+            days_in_cycle: 1
+            start_time: "03:00" # UTC
+        retention_policy:
+          max_retention_days: 7
+          on_source_disk_delete: "KEEP_SNAPSHOTS"
+        snapshot_properties:
+          storage_locations: ["asia-south1"]
+          guest_flush: false
+
+    zonal_disks:
+      secops-demo-data-disk:
+        zone: "asia-south1-a"
+        size_gb: 10
+        type: "pd-balanced"
+        snapshot_policy: "daily-backup-policy"
+
+  # =========================================================================
+  # 3. FILESTORE (NFS FILE SHARES) - [OPTIONAL: Uncomment to provision NFS]
+  # =========================================================================
+  # filestore:
+  #   instances:
+  #     secops-demo-nfs-share:
+  #       zone: "asia-south1-a"
+  #       tier: "BASIC_HDD"
+  #       file_shares:
+  #         name: "vol1"
+  #         capacity_gb: 1024 # 1 TB minimum
+  #         nfs_export_options:
+  #           - ip_ranges: ["10.0.0.0/16"]
+  #             access_mode: "READ_WRITE"
+  #             squash_mode: "NO_ROOT_SQUASH"
+  #       network:
+  #         name: "default"
+  #         modes: ["MODE_IPV4"]
+  #         connect_mode: "DIRECT_PEERING"

@@ -189,6 +189,15 @@ gcp-terraform-custom-modules/
 │       ├── outputs.tf                        # Notes, attestors & policy outputs
 │       ├── versions.tf                       # Provider constraints
 │       └── README.md                         # Detailed module documentation
+├── storage-infrastructure/                   # Enterprise Cloud Storage, Persistent Disks & Filestore (NFS)
+│   ├── 0-locals.tf                           # Dynamic YAML parser, defaults & reference resolvers
+│   ├── 1-gcs-buckets.tf                      # Cloud Storage buckets, lifecycle rules, WORM, CMEK & IAM
+│   ├── 2-compute-disks.tf                    # Zonal & Regional Persistent Disks, Snapshot schedules & attachments
+│   ├── 3-filestore.tf                        # Filestore NFS shares, network attachments & client export rules
+│   ├── variables.tf                          # Input variables
+│   ├── outputs.tf                            # Buckets, disks, snapshot policies & Filestore outputs
+│   ├── versions.tf                           # Provider constraints
+│   └── README.md                             # Detailed module documentation
 ├── examples/                                 # Reference implementations & sample setups
 │   ├── foundation/                           # Enterprise landing zone deployment example
 │   ├── network/
@@ -199,14 +208,16 @@ gcp-terraform-custom-modules/
 │   │   ├── peering-setup/                    # VPC Network Peering deployment example
 │   │   ├── psc-setup/                        # Private Service Connect deployment example
 │   │   └── vpn-setup/                        # HA Cloud VPN site-to-site deployment example
-│   └── secops/
-│       ├── crypto-secrets-setup/             # Cloud KMS (HSM/CMEK) & Secret Manager deployment example
-│       ├── audit-compliance-setup/           # SIEM Log Sinks, WORM Storage & CIS Metrics deployment example
-│       ├── zero-trust-setup/                 # Keyless GitHub Actions WIF & IAP TCP Tunneling example
-│       ├── edge-security-setup/              # Cloud Armor WAF, OWASP mitigation & Rate Limiting example
-│       ├── threat-posture-setup/             # SCC Notifications & Cloud Asset Inventory Feeds example
-│       ├── pki-data-security-setup/          # Private CA Service, Certificate Manager & Cloud DLP example
-│       └── container-security-setup/         # Binary Authorization & Container Analysis setup example
+│   ├── secops/
+│   │   ├── crypto-secrets-setup/             # Cloud KMS (HSM/CMEK) & Secret Manager deployment example
+│   │   ├── audit-compliance-setup/           # SIEM Log Sinks, WORM Storage & CIS Metrics deployment example
+│   │   ├── zero-trust-setup/                 # Keyless GitHub Actions WIF & IAP TCP Tunneling example
+│   │   ├── edge-security-setup/              # Cloud Armor WAF, OWASP mitigation & Rate Limiting example
+│   │   ├── threat-posture-setup/             # SCC Notifications & Cloud Asset Inventory Feeds example
+│   │   ├── pki-data-security-setup/          # Private CA Service, Certificate Manager & Cloud DLP example
+│   │   └── container-security-setup/         # Binary Authorization & Container Analysis setup example
+│   └── storage/
+│       └── storage-infrastructure-setup/     # Unified GCS, Persistent Disks & Filestore deployment example
 ├── .gitignore                                # Git ignore rules
 └── README.md                                 # Root repository documentation
 ```
@@ -232,6 +243,8 @@ gcp-terraform-custom-modules/
 | **SecOps** | **Threat & Posture Management (SCC & Cloud Asset Inventory)** | Dynamic YAML-driven continuous threat posture and asset drift management. Configures Security Command Center (SCC v2) project notification configs for real-time streaming of High/Critical security findings and anomalous IAM privilege escalations to Cloud Pub/Sub, continuous finding exports to BigQuery compliance data lakes, and Cloud Asset Inventory (CAI) real-time project feeds for instant detection of infrastructure drift across Firewalls, IAM, KMS, and Cloud Storage. | [`secops-infrastructure/threat-posture-infra`](./secops-infrastructure/threat-posture-infra/) |
 | **SecOps** | **PKI & Data Security (Private CA, Certificate Manager & Cloud DLP)** | Dynamic YAML-driven internal cryptographic trust, TLS certificate management, and automated sensitive data discovery. Deploys Google Cloud Certificate Authority Service (CAS) for `DEVOPS` and `ENTERPRISE` CA pools and Root/Subordinate CAs with hardware-backed keys, Certificate Manager for DNS authorizations and HTTPS Load Balancer Certificate Maps, and Cloud Data Loss Prevention (Cloud DLP / Sensitive Data Protection) for inspection templates, character masking de-identification, and scheduled storage/BigQuery scan triggers. | [`secops-infrastructure/pki-data-security-infra`](./secops-infrastructure/pki-data-security-infra/) |
 | **SecOps** | **Container Security (Binary Authorization & Grafeas)** | Declarative YAML-driven container admission control and supply chain provenance. Deploys Container Analysis Grafeas notes for vulnerability scan and security approvals, Binary Authorization attestors with KMS/PGP keys, builder/verifier IAM, and admission policies. | [`secops-infrastructure/container-security-infra`](./secops-infrastructure/container-security-infra/) |
+| **Storage** | **Storage Infrastructure (GCS, Persistent Disks & Filestore)** | Declarative unified storage infrastructure provisioned via YAML. Efficiently and conditionally creates Cloud Storage (GCS) buckets with lifecycle rules, UBLA, WORM, and CMEK; Compute Persistent Disks (Zonal & Regional HA) with automated snapshot schedules and DR attachments; and Filestore NFS shares with granular network export options. | [`storage-infrastructure`](./storage-infrastructure/) |
+
 
 
 ---
