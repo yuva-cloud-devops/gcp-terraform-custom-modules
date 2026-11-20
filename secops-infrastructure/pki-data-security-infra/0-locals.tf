@@ -41,7 +41,7 @@ locals {
       description      = try(v.description, "Managed Private CA Pool")
       issuance_policy  = try(v.issuance_policy, null)
       publish_ca_cert  = try(v.publishing_options.publish_ca_cert, try(v.publish_ca_cert, true))
-      publish_crl      = try(v.publishing_options.publish_crl, try(v.publish_crl, true))
+      publish_crl      = upper(try(v.tier, "DEVOPS")) == "DEVOPS" ? false : try(v.publishing_options.publish_crl, try(v.publish_crl, true))
       labels           = merge(local.common_labels, try(v.labels, {}))
     }
   }

@@ -11,7 +11,7 @@ pki_data_security:
       description: "DevOps tier CA pool for microservices and internal mTLS"
       publishing_options:
         publish_ca_cert: true
-        publish_crl: true
+        publish_crl: false
 
   certificate_authorities:
     secops-root-ca:
