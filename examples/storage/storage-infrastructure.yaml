@@ -26,7 +26,7 @@ storage_infrastructure:
               age: 365
 
   # =========================================================================
-  # 2. COMPUTE PERSISTENT DISKS & SNAPSHOT POLICIES - [OPTIONAL]
+  # 2. COMPUTE PERSISTENT DISKS & SNAPSHOT POLICIES - [ACTIVE]
   # =========================================================================
   compute_disks:
     snapshot_policies:
@@ -38,7 +38,7 @@ storage_infrastructure:
             start_time: "03:00" # UTC
         retention_policy:
           max_retention_days: 7
-          on_source_disk_delete: "KEEP_SNAPSHOTS"
+          on_source_disk_delete: "KEEP_AUTO_SNAPSHOTS"
         snapshot_properties:
           storage_locations: ["asia-south1"]
           guest_flush: false
@@ -50,22 +50,33 @@ storage_infrastructure:
         type: "pd-balanced"
         snapshot_policy: "daily-backup-policy"
 
+    regional_disks:
+      secops-demo-ha-disk:
+        region: "asia-south1"
+        replica_zones:
+          - "asia-south1-a"
+          - "asia-south1-b"
+        size_gb: 200 # Minimum size for regional pd-balanced is 200GB
+        type: "pd-balanced"
+        snapshot_policy: "daily-backup-policy"
+
   # =========================================================================
-  # 3. FILESTORE (NFS FILE SHARES) - [OPTIONAL: Uncomment to provision NFS]
+  # 3. FILESTORE (NFS FILE SHARES) - [ACTIVE]
   # =========================================================================
-  # filestore:
-  #   instances:
-  #     secops-demo-nfs-share:
-  #       zone: "asia-south1-a"
-  #       tier: "BASIC_HDD"
-  #       file_shares:
-  #         name: "vol1"
-  #         capacity_gb: 1024 # 1 TB minimum
-  #         nfs_export_options:
-  #           - ip_ranges: ["10.0.0.0/16"]
-  #             access_mode: "READ_WRITE"
-  #             squash_mode: "NO_ROOT_SQUASH"
-  #       network:
-  #         name: "default"
-  #         modes: ["MODE_IPV4"]
-  #         connect_mode: "DIRECT_PEERING"
+  filestore:
+    instances:
+      secops-demo-nfs-share:
+        zone: "asia-south1-a"
+        tier: "BASIC_HDD" # 1 TB minimum for Basic tiers
+        description: "SecOps Demo Managed NFSv3 File Share"
+        file_shares:
+          name: "vol1"
+          capacity_gb: 1024 # 1 TB
+          nfs_export_options:
+            - ip_ranges: ["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"]
+              access_mode: "READ_WRITE"
+              squash_mode: "NO_ROOT_SQUASH"
+        network:
+          name: "default"
+          modes: ["MODE_IPV4"]
+          connect_mode: "DIRECT_PEERING"

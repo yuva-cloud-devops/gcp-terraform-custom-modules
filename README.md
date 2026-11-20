@@ -216,8 +216,7 @@ gcp-terraform-custom-modules/
 │   │   ├── threat-posture-setup/             # SCC Notifications & Cloud Asset Inventory Feeds example
 │   │   ├── pki-data-security-setup/          # Private CA Service, Certificate Manager & Cloud DLP example
 │   │   └── container-security-setup/         # Binary Authorization & Container Analysis setup example
-│   └── storage/
-│       └── storage-infrastructure-setup/     # Unified GCS, Persistent Disks & Filestore deployment example
+│   └── storage/                              # Unified GCS, Persistent Disks & Filestore deployment example
 ├── .gitignore                                # Git ignore rules
 └── README.md                                 # Root repository documentation
 ```

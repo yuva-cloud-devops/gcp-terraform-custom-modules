@@ -82,7 +82,11 @@ locals {
       daily_schedule        = try(v.schedule.daily, null)
       weekly_schedule       = try(v.schedule.weekly, null)
       max_retention_days    = try(v.retention_policy.max_retention_days, 14)
-      on_source_disk_delete = upper(try(v.retention_policy.on_source_disk_delete, "KEEP_SNAPSHOTS"))
+      on_source_disk_delete = (
+        upper(try(v.retention_policy.on_source_disk_delete, "KEEP_AUTO_SNAPSHOTS")) == "KEEP_SNAPSHOTS" ?
+        "KEEP_AUTO_SNAPSHOTS" :
+        upper(try(v.retention_policy.on_source_disk_delete, "KEEP_AUTO_SNAPSHOTS"))
+      )
       storage_locations     = try(v.snapshot_properties.storage_locations, [try(v.region, local.default_region)])
       guest_flush           = try(v.snapshot_properties.guest_flush, false)
       labels                = try(v.snapshot_properties.labels, {})

@@ -76,7 +76,7 @@ storage_infrastructure:
             start_time: "02:00" # UTC
         retention_policy:
           max_retention_days: 14
-          on_source_disk_delete: "KEEP_SNAPSHOTS"
+          on_source_disk_delete: "KEEP_AUTO_SNAPSHOTS"
         snapshot_properties:
           storage_locations: ["asia-south1"]
           guest_flush: true
