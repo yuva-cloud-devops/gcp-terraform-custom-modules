@@ -32,9 +32,12 @@ resource "google_data_loss_prevention_inspect_template" "inspect_templates" {
       }
     }
 
-    limits {
-      max_findings_per_item    = each.value.max_findings_per_item
-      max_findings_per_request = each.value.max_findings_per_request
+    dynamic "limits" {
+      for_each = each.value.max_findings_per_item != null && each.value.max_findings_per_request != null ? [1] : []
+      content {
+        max_findings_per_item    = each.value.max_findings_per_item
+        max_findings_per_request = each.value.max_findings_per_request
+      }
     }
   }
 }

@@ -189,8 +189,8 @@ locals {
       info_types            = try(v.info_types, ["EMAIL_ADDRESS", "CREDIT_CARD_NUMBER", "AUTH_TOKEN", "GCP_API_KEY"])
       min_likelihood           = try(v.min_likelihood, "LIKELY")
       include_quote            = try(v.include_quote, false)
-      max_findings_per_item    = try(v.max_findings_per_item, 100)
-      max_findings_per_request = try(v.max_findings_per_request, 1000)
+      max_findings_per_item    = try(v.max_findings_per_item, null)
+      max_findings_per_request = try(v.max_findings_per_request, null)
     }
   }
 
