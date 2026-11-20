@@ -8,6 +8,20 @@
 # ==============================================================================
 
 # ------------------------------------------------------------------------------
+# Cloud Asset Inventory Service Identity (Service Agent)
+# ------------------------------------------------------------------------------
+resource "google_project_service_identity" "cloudasset_sa" {
+  for_each = toset(distinct([
+    for k, v in local.asset_feeds_map : v.project_id
+    if v.project_id != null
+  ]))
+
+  provider = google-beta
+  project  = each.value
+  service  = "cloudasset.googleapis.com"
+}
+
+# ------------------------------------------------------------------------------
 # Managed Pub/Sub Topics for Cloud Asset Inventory Feeds
 # ------------------------------------------------------------------------------
 resource "google_pubsub_topic" "asset_topics" {
@@ -33,7 +47,11 @@ resource "google_pubsub_topic_iam_member" "asset_publisher" {
   project = each.value.project_id
   topic   = google_pubsub_topic.asset_topics["asset-${each.key}"].name
   role    = "roles/pubsub.publisher"
-  member  = "serviceAccount:service-${data.google_project.project.number}@gcp-sa-cloudasset.iam.gserviceaccount.com"
+  member  = google_project_service_identity.cloudasset_sa[each.value.project_id].member
+
+  depends_on = [
+    google_project_service_identity.cloudasset_sa
+  ]
 }
 
 # ------------------------------------------------------------------------------

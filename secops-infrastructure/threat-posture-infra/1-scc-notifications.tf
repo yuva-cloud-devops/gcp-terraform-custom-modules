@@ -21,21 +21,6 @@ resource "google_pubsub_topic" "scc_topics" {
 }
 
 # ------------------------------------------------------------------------------
-# IAM Delegation: Allow SCC Notification Service Account to Publish to Topic
-# ------------------------------------------------------------------------------
-resource "google_pubsub_topic_iam_member" "scc_publisher" {
-  for_each = {
-    for k, v in local.scc_notifications_map : k => v
-    if v.create_topic && !startswith(v.topic_name, "projects/")
-  }
-
-  project = each.value.project_id
-  topic   = google_pubsub_topic.scc_topics["scc-${each.key}"].name
-  role    = "roles/pubsub.publisher"
-  member  = "serviceAccount:service-${data.google_project.project.number}@gcp-sa-scc-notification.iam.gserviceaccount.com"
-}
-
-# ------------------------------------------------------------------------------
 # SCC v2 Project Notification Configurations (Real-Time Finding Streaming)
 # ------------------------------------------------------------------------------
 resource "google_scc_v2_project_notification_config" "notifications" {
@@ -57,6 +42,25 @@ resource "google_scc_v2_project_notification_config" "notifications" {
   }
 
   depends_on = [
-    google_pubsub_topic_iam_member.scc_publisher
+    google_pubsub_topic.scc_topics
+  ]
+}
+
+# ------------------------------------------------------------------------------
+# IAM Delegation: Allow SCC Notification Service Account to Publish to Topic
+# ------------------------------------------------------------------------------
+resource "google_pubsub_topic_iam_member" "scc_publisher" {
+  for_each = {
+    for k, v in local.scc_notifications_map : k => v
+    if v.create_topic && !startswith(v.topic_name, "projects/")
+  }
+
+  project = each.value.project_id
+  topic   = google_pubsub_topic.scc_topics["scc-${each.key}"].name
+  role    = "roles/pubsub.publisher"
+  member  = "serviceAccount:${google_scc_v2_project_notification_config.notifications[each.key].service_account}"
+
+  depends_on = [
+    google_scc_v2_project_notification_config.notifications
   ]
 }
