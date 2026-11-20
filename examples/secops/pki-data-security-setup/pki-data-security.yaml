@@ -1,0 +1,66 @@
+pki_data_security:
+  project_id: "yuvaraj-internal-project"
+  location: "asia-south1"
+
+  # =========================================================================
+  # 1. CERTIFICATE AUTHORITY SERVICE (CAS / PRIVATE CA)
+  # =========================================================================
+  ca_pools:
+    secops-devops-ca-pool:
+      tier: "DEVOPS"
+      description: "DevOps tier CA pool for microservices and internal mTLS"
+      publishing_options:
+        publish_ca_cert: true
+        publish_crl: true
+
+  certificate_authorities:
+    secops-root-ca:
+      ca_pool: "secops-devops-ca-pool"
+      type: "SELF_SIGNED"
+      lifetime: "315360000s" # 10 years
+      key_spec:
+        algorithm: "RSA_PKCS1_4096_SHA256"
+      subject:
+        common_name: "SecOps Internal Root CA"
+        organization: "Yuvaraj Cloud SecOps"
+        country_code: "IN"
+      deletion_protection: false
+      skip_grace_period: true
+      ignore_active_certificates_on_deletion: true
+
+  # =========================================================================
+  # 2. CERTIFICATE MANAGER
+  # =========================================================================
+  certificate_manager:
+    dns_authorizations:
+      secops-test-dns-auth:
+        domain: "api.secops.internal.local"
+        description: "DNS authorization challenge for internal domain verification"
+
+    certificate_maps:
+      secops-lb-cert-map:
+        description: "Centralized Certificate Map for SecOps Edge HTTPS Load Balancer"
+
+  # =========================================================================
+  # 3. CLOUD DATA LOSS PREVENTION (DLP)
+  # =========================================================================
+  dlp:
+    inspect_templates:
+      secops-pii-inspection-template:
+        display_name: "SecOps Standard PII & Secret Scanner"
+        description: "Scans for emails, credit cards, auth tokens, and GCP API keys"
+        info_types:
+          - "EMAIL_ADDRESS"
+          - "CREDIT_CARD_NUMBER"
+          - "AUTH_TOKEN"
+          - "GCP_API_KEY"
+        min_likelihood: "LIKELY"
+
+    deidentify_templates:
+      secops-masking-template:
+        display_name: "SecOps PII Character Masking"
+        description: "Masks sensitive characters with asterisks"
+        transformation_type: "mask"
+        mask_character: "*"
+        number_to_mask: 4
+        reverse_order: true

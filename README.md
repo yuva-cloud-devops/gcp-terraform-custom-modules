@@ -162,13 +162,22 @@ gcp-terraform-custom-modules/
 │   │   ├── outputs.tf                        # Policies, endpoints, perimeters & summary metrics
 │   │   ├── versions.tf                       # Provider constraints
 │   │   └── README.md                         # Detailed module documentation
-│   └── threat-posture-infra/                 # Security Command Center (SCC v2) & Cloud Asset Inventory
-│       ├── 0-locals.tf                       # Dynamic YAML parser, filter normalizer & IAM resolvers
-│       ├── 1-scc-notifications.tf            # SCC v2 finding notifications & Pub/Sub alerting
-│       ├── 2-scc-bigquery-exports.tf         # SCC v2 continuous BigQuery finding exports
-│       ├── 3-cloud-asset-feeds.tf            # Cloud Asset Inventory real-time configuration drift feeds
+│   ├── threat-posture-infra/                 # Security Command Center (SCC v2) & Cloud Asset Inventory
+│   │   ├── 0-locals.tf                       # Dynamic YAML parser, filter normalizer & IAM resolvers
+│   │   ├── 1-scc-notifications.tf            # SCC v2 finding notifications & Pub/Sub alerting
+│   │   ├── 2-scc-bigquery-exports.tf         # SCC v2 continuous BigQuery finding exports
+│   │   ├── 3-cloud-asset-feeds.tf            # Cloud Asset Inventory real-time configuration drift feeds
+│   │   ├── variables.tf                      # Input variables
+│   │   ├── outputs.tf                        # Notification IDs, feeds, topics & summary metrics
+│   │   ├── versions.tf                       # Provider constraints
+│   │   └── README.md                         # Detailed module documentation
+│   └── pki-data-security-infra/              # CAS (Private CA), Certificate Manager, Cloud DLP
+│       ├── 0-locals.tf                       # Dynamic YAML parser, subject mappings & DLP transformers
+│       ├── 1-private-ca-service.tf           # Private CA pools (DevOps/Enterprise) & Root/Subordinate CAs
+│       ├── 2-certificate-manager.tf          # DNS Authorizations, Issuance Configs, Cert Maps & Entries
+│       ├── 3-cloud-dlp.tf                    # Inspection templates, De-identification masking & Job Triggers
 │       ├── variables.tf                      # Input variables
-│       ├── outputs.tf                        # Notification IDs, feeds, topics & summary metrics
+│       ├── outputs.tf                        # CA pools, cert maps, DLP template names & IDs
 │       ├── versions.tf                       # Provider constraints
 │       └── README.md                         # Detailed module documentation
 ├── examples/                                 # Reference implementations & sample setups
@@ -186,7 +195,8 @@ gcp-terraform-custom-modules/
 │       ├── audit-compliance-setup/           # SIEM Log Sinks, WORM Storage & CIS Metrics deployment example
 │       ├── zero-trust-setup/                 # Keyless GitHub Actions WIF & IAP TCP Tunneling example
 │       ├── edge-security-setup/              # Cloud Armor WAF, OWASP mitigation & Rate Limiting example
-│       └── threat-posture-setup/             # SCC Notifications & Cloud Asset Inventory Feeds example
+│       ├── threat-posture-setup/             # SCC Notifications & Cloud Asset Inventory Feeds example
+│       └── pki-data-security-setup/          # Private CA Service, Certificate Manager & Cloud DLP example
 ├── .gitignore                                # Git ignore rules
 └── README.md                                 # Root repository documentation
 ```
@@ -210,6 +220,7 @@ gcp-terraform-custom-modules/
 | **SecOps** | **Zero Trust & Keyless Access (IAP & WIF)** | Dynamic YAML-driven Zero Trust and keyless authentication infrastructure. Deploys Workload Identity Federation (WIF) pools and providers for keyless CI/CD (GitHub Actions, GitLab, AWS, Azure, OIDC/SAML) with CEL attribute mappings and impersonation controls (`roles/iam.workloadIdentityUser`). Manages Identity-Aware Proxy (IAP) TCP tunneling ingress firewall rules (`35.235.240.0/20`), VM tunnel accessor IAM delegations (`roles/iap.tunnelResourceAccessor`), and IAP Web Application OAuth brands, clients, and backend HTTPS accessors (`roles/iap.httpsResourceAccessor`). | [`secops-infrastructure/zero-trust-security-infra`](./secops-infrastructure/zero-trust-security-infra/) |
 | **SecOps** | **Edge Security (Cloud Armor, Cloud IDS & VPC SC)** | Dynamic YAML-driven edge security, threat inspection, and perimeter enforcement. Deploys Cloud Armor Web Application Firewall (WAF) policies with OWASP Top 10 preconfigured rulesets (SQLi, XSS, LFI, RCE, Scanners), Layer 7 Adaptive Protection (ML DDoS defense), Layer 7 rate limiting/throttling, and Geo-fencing CEL expressions. Provisions Cloud IDS deep packet inspection (DPI) endpoints powered by Palo Alto Networks threat signatures, and Access Context Manager (ACM) VPC Service Controls perimeters to prevent data exfiltration. | [`secops-infrastructure/edge-security-infra`](./secops-infrastructure/edge-security-infra/) |
 | **SecOps** | **Threat & Posture Management (SCC & Cloud Asset Inventory)** | Dynamic YAML-driven continuous threat posture and asset drift management. Configures Security Command Center (SCC v2) project notification configs for real-time streaming of High/Critical security findings and anomalous IAM privilege escalations to Cloud Pub/Sub, continuous finding exports to BigQuery compliance data lakes, and Cloud Asset Inventory (CAI) real-time project feeds for instant detection of infrastructure drift across Firewalls, IAM, KMS, and Cloud Storage. | [`secops-infrastructure/threat-posture-infra`](./secops-infrastructure/threat-posture-infra/) |
+| **SecOps** | **PKI & Data Security (Private CA, Certificate Manager & Cloud DLP)** | Dynamic YAML-driven internal cryptographic trust, TLS certificate management, and automated sensitive data discovery. Deploys Google Cloud Certificate Authority Service (CAS) for `DEVOPS` and `ENTERPRISE` CA pools and Root/Subordinate CAs with hardware-backed keys, Certificate Manager for DNS authorizations and HTTPS Load Balancer Certificate Maps, and Cloud Data Loss Prevention (Cloud DLP / Sensitive Data Protection) for inspection templates, character masking de-identification, and scheduled storage/BigQuery scan triggers. | [`secops-infrastructure/pki-data-security-infra`](./secops-infrastructure/pki-data-security-infra/) |
 
 
 ---

@@ -65,5 +65,11 @@ When provisioning SecOps infrastructure, execute modules in this dependency orde
 - **Documentation**: [`threat-posture-infra/README.md`](./threat-posture-infra/README.md)
 - **Reference Example**: [`examples/secops/threat-posture-setup/`](../examples/secops/threat-posture-setup/)
 
+### 6. `pki-data-security-infra`
+- **Purpose**: Declarative provisioning of Private PKI trust hierarchies, centralized TLS lifecycle routing, and automated sensitive data discovery via YAML. Deploys Google Cloud Certificate Authority Service (CAS) for `DEVOPS` and `ENTERPRISE` CA pools and Root/Subordinate CAs, Certificate Manager for DNS authorizations and HTTPS Load Balancer Certificate Maps, and Cloud Data Loss Prevention (Cloud DLP / Sensitive Data Protection) for inspection templates, character masking de-identification, and scheduled storage/BigQuery scan triggers.
+- **Documentation**: [`pki-data-security-infra/README.md`](./pki-data-security-infra/README.md)
+- **Reference Example**: [`examples/secops/pki-data-security-setup/`](../examples/secops/pki-data-security-setup/)
+
+
 
 
