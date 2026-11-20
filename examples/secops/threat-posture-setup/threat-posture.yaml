@@ -1,0 +1,25 @@
+threat_posture:
+  project_id: "yuvaraj-internal-project"
+  location: "global"
+
+  # =========================================================================
+  # 1. SECURITY COMMAND CENTER (SCC) FINDING NOTIFICATIONS
+  # =========================================================================
+  scc_notifications:
+    secops-high-critical-alerts:
+      description: "Real-time alerts for High and Critical active security findings"
+      pubsub_topic: "scc-high-critical-findings-topic"
+      filter: 'state="ACTIVE" AND (severity="HIGH" OR severity="CRITICAL")'
+
+  # =========================================================================
+  # 2. CLOUD ASSET INVENTORY (CAI) REAL-TIME CONFIGURATION DRIFT FEEDS
+  # =========================================================================
+  asset_feeds:
+    track-security-assets:
+      description: "Real-time drift feed for firewalls, storage buckets, and IAM accounts"
+      pubsub_topic: "asset-security-drift-topic"
+      content_type: "RESOURCE"
+      asset_types:
+        - "compute.googleapis.com/Firewall"
+        - "storage.googleapis.com/Bucket"
+        - "iam.googleapis.com/ServiceAccount"

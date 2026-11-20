@@ -60,4 +60,10 @@ When provisioning SecOps infrastructure, execute modules in this dependency orde
 - **Documentation**: [`edge-security-infra/README.md`](./edge-security-infra/README.md)
 - **Reference Example**: [`examples/secops/edge-security-setup/`](../examples/secops/edge-security-setup/)
 
+### 5. `threat-posture-infra`
+- **Purpose**: Declarative provisioning of continuous vulnerability notification streaming, BigQuery security finding data lakes, and real-time configuration drift feeds via YAML. Integrates Security Command Center (SCC v2) for active threat and compliance finding notifications with Cloud Asset Inventory (CAI) real-time project feeds across Firewalls, IAM, KMS, and Cloud Storage.
+- **Documentation**: [`threat-posture-infra/README.md`](./threat-posture-infra/README.md)
+- **Reference Example**: [`examples/secops/threat-posture-setup/`](../examples/secops/threat-posture-setup/)
+
+
 
