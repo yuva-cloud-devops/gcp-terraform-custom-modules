@@ -13,7 +13,9 @@ locals {
   # ----------------------------------------------------------------------------
   raw_config = yamldecode(
     var.yaml_content != null ? var.yaml_content : (
-      var.config_file_path != null ? file(var.config_file_path) : "{}"
+      var.config_file_path != null ? (
+        try(trimspace(file(var.config_file_path)), "") != "" ? file(var.config_file_path) : "{}"
+      ) : "{}"
     )
   )
 

@@ -1,3 +1,8 @@
+# ==============================================================================
+# Outputs: Threat Posture Infrastructure (SCC & Cloud Asset Inventory)
+# ==============================================================================
+
+
 output "scc_notifications" {
   description = "Security Command Center v2 notification configs."
   value       = module.threat_posture.scc_notification_configs
