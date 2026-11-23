@@ -134,11 +134,26 @@ locals {
           "projects/${try(v.project_id, local.default_project_id)}/global/networks/${try(v.network, local.default_network)}"
         ) : "projects/${try(v.project_id, local.default_project_id)}/global/networks/default"
       )
+      allocated_ip_range               = try(v.allocated_ip_range, null)
+      initial_user_password            = try(v.initial_user_password, try(v.password, null))
+      automated_backup_policy = {
+        enabled         = try(v.automated_backup_policy.enabled, true)
+        days_of_week    = try(v.automated_backup_policy.days_of_week, try(v.weekly_backup_days, ["SUNDAY"]))
+        start_time_hour = try(
+          v.automated_backup_policy.start_time_hour,
+          try(
+            tonumber(split(":", try(v.weekly_backup_time, "02:00"))[0]),
+            2
+          )
+        )
+        backup_count    = try(v.automated_backup_policy.backup_count, try(v.backup_count, 14))
+      }
+      continuous_backup_recovery_window_days = try(
+        v.continuous_backup_recovery_window_days,
+        try(v.continuous_backup_retention_days, 14)
+      )
       kms_key_name                     = try(v.kms_key_name, null)
       deletion_protection              = try(v.deletion_protection, false)
-      continuous_backup_retention_days = try(v.continuous_backup_retention_days, 14)
-      weekly_backup_days               = try(v.weekly_backup_days, ["SUNDAY"])
-      weekly_backup_time               = try(v.weekly_backup_time, "02:00")
       labels                           = try(v.labels, {})
       primary_instance                 = try(v.primary_instance, {})
       read_pools                       = try(v.read_pools, [])
@@ -147,14 +162,15 @@ locals {
 
   alloydb_primary_instances_map = {
     for k, v in local.alloydb_clusters_map : k => {
-      cluster_name = v.cluster_id
-      project_id   = v.project_id
-      location     = v.location
-      instance_id  = try(v.primary_instance.instance_id, "${v.cluster_id}-primary")
-      display_name = try(v.primary_instance.display_name, "Primary Instance for ${v.cluster_id}")
-      cpu_count    = try(v.primary_instance.cpu_count, 2)
-      database_flags = try(v.primary_instance.database_flags, {})
-      labels       = try(v.primary_instance.labels, v.labels)
+      cluster_name      = v.cluster_id
+      project_id        = v.project_id
+      location          = v.location
+      instance_id       = try(v.primary_instance.instance_id, "${v.cluster_id}-primary")
+      display_name      = try(v.primary_instance.display_name, "Primary Instance for ${v.cluster_id}")
+      cpu_count         = try(v.primary_instance.cpu_count, 2)
+      availability_type = upper(try(v.primary_instance.availability_type, "REGIONAL"))
+      database_flags    = try(v.primary_instance.database_flags, {})
+      labels            = try(v.primary_instance.labels, v.labels)
     } if can(v.primary_instance) && length(keys(v.primary_instance)) > 0
   }
 

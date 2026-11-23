@@ -5,10 +5,11 @@
 resource "google_alloydb_cluster" "clusters" {
   for_each = local.alloydb_clusters_map
 
-  cluster_id = each.value.cluster_id
-  project    = each.value.project_id
-  location   = each.value.location
-  labels     = each.value.labels
+  cluster_id   = each.value.cluster_id
+  project      = each.value.project_id
+  location     = each.value.location
+  display_name = each.value.display_name
+  labels       = each.value.labels
 
   network_config {
     network            = each.value.network
