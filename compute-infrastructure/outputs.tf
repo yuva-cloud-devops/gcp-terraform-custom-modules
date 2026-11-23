@@ -62,6 +62,18 @@ output "vm_instances" {
   )
 }
 
+output "static_public_ips" {
+  description = "Map of reserved regional static external IP addresses created for VMs"
+  value = {
+    for k, v in google_compute_address.static_public_ips : k => {
+      id      = v.id
+      name    = v.name
+      address = v.address
+      region  = v.region
+    }
+  }
+}
+
 # ------------------------------------------------------------------------------
 # 3. Health Checks
 # ------------------------------------------------------------------------------

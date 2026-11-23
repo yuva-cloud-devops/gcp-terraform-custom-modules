@@ -82,6 +82,7 @@ resource "google_compute_instance_template" "templates" {
       dynamic "access_config" {
         for_each = network_interface.value.enable_public_ip ? [1] : []
         content {
+          nat_ip       = network_interface.value.nat_ip
           network_tier = network_interface.value.network_tier
         }
       }

@@ -86,14 +86,17 @@ compute_infrastructure:
       enable_logging: false
 
   # ----------------------------------------------------------------------------
-  # 4. Standalone VM Instances (From Template or Custom, with Schedules)
+  # 4. Standalone VM Instances (From Template or Custom, with Schedules & Public IP)
   # ----------------------------------------------------------------------------
   vm_instances:
-    # Example A: Standalone VM created from the reusable Instance Template
+    # Example A: Bastion Jump Host created from template with Public IP attached
     bastion-jump-host:
       instance_template: "web-app-template"
       zone: "asia-south1-a"
       tags: ["allow-iap-ssh"]
+      # Public IP Option: Set enable_public_ip: true for Ephemeral Public IP
+      # Or static_public_ip: true to auto-reserve a dedicated Regional Static External IP
+      enable_public_ip: true
       # Attach start/stop instance schedule
       instance_schedule: "business-hours-schedule"
       # Attach disk snapshot schedule

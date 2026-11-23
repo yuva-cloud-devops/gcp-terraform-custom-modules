@@ -140,8 +140,18 @@ locals {
               "projects/${try(v.project_id, local.default_project_id)}/regions/${try(v.region, local.default_region)}/subnetworks/${try(nic.subnetwork, try(v.subnetwork, local.default_subnetwork))}"
             ) : null
           )
-          enable_public_ip = try(nic.enable_public_ip, try(v.enable_public_ip, false))
-          network_tier     = try(nic.network_tier, "PREMIUM")
+          enable_public_ip = (
+            try(nic.enable_public_ip, false) == true ||
+            try(nic.public_ip, false) == true ||
+            try(nic.public_ip, "") == "EPHEMERAL" ||
+            try(nic.public_ip, "") == "ephemeral" ||
+            try(v.enable_public_ip, false) == true ||
+            try(v.public_ip, false) == true ||
+            try(v.public_ip, "") == "EPHEMERAL" ||
+            try(v.public_ip, "") == "ephemeral"
+          )
+          nat_ip       = try(nic.nat_ip, try(v.nat_ip, null))
+          network_tier = try(nic.network_tier, "PREMIUM")
         }
       ]
 
@@ -191,6 +201,7 @@ locals {
       name        = try(v.name, tostring(k))
       project_id  = try(v.project_id, local.default_project_id)
       zone        = try(v.zone, "${try(v.region, local.default_region)}-a")
+      region      = try(v.region, join("-", slice(split("-", try(v.zone, "${local.default_region}-a")), 0, 2)))
       description = try(v.description, "Managed VM Instance ${try(v.name, tostring(k))}")
 
       # Optional: Instance Template inheritance
@@ -228,6 +239,31 @@ locals {
         }
       ]
 
+      # Top-level Public IP Flags (convenience aliases)
+      enable_public_ip = (
+        try(v.enable_public_ip, false) == true ||
+        try(v.public_ip, false) == true ||
+        try(v.public_ip, "") == "EPHEMERAL" ||
+        try(v.public_ip, "") == "ephemeral" ||
+        try(v.public_ip, "") == "STATIC" ||
+        try(v.public_ip, "") == "static" ||
+        try(v.static_public_ip, false) == true ||
+        try(v.create_static_public_ip, false) == true ||
+        try(v.external_ip, false) == true ||
+        try(v.network_interface.enable_public_ip, false) == true ||
+        try(v.network_interface.public_ip, false) == true ||
+        try(v.network_interface.static_public_ip, false) == true
+      )
+
+      create_static_public_ip = (
+        try(v.public_ip, "") == "STATIC" ||
+        try(v.public_ip, "") == "static" ||
+        try(v.static_public_ip, false) == true ||
+        try(v.create_static_public_ip, false) == true ||
+        try(v.network_interface.static_public_ip, false) == true ||
+        try(v.network_interface.create_static_public_ip, false) == true
+      )
+
       # Network Interfaces
       network_interfaces = [
         for idx, nic in try(v.network_interfaces, [try(v.network_interface, {})]) : {
@@ -245,9 +281,38 @@ locals {
               "projects/${try(v.project_id, local.default_project_id)}/regions/${try(v.region, local.default_region)}/subnetworks/${try(nic.subnetwork, try(v.subnetwork, local.default_subnetwork))}"
             ) : null
           )
-          network_ip       = try(nic.network_ip, try(v.static_internal_ip, null))
-          enable_public_ip = try(nic.enable_public_ip, try(v.enable_public_ip, false))
-          network_tier     = try(nic.network_tier, "PREMIUM")
+          network_ip = try(nic.network_ip, try(v.static_internal_ip, null))
+          enable_public_ip = (
+            try(nic.enable_public_ip, false) == true ||
+            try(nic.public_ip, false) == true ||
+            try(nic.public_ip, "") == "EPHEMERAL" ||
+            try(nic.public_ip, "") == "ephemeral" ||
+            try(nic.public_ip, "") == "STATIC" ||
+            try(nic.public_ip, "") == "static" ||
+            try(nic.static_public_ip, false) == true ||
+            try(nic.create_static_public_ip, false) == true ||
+            try(v.enable_public_ip, false) == true ||
+            try(v.public_ip, false) == true ||
+            try(v.public_ip, "") == "EPHEMERAL" ||
+            try(v.public_ip, "") == "ephemeral" ||
+            try(v.public_ip, "") == "STATIC" ||
+            try(v.public_ip, "") == "static" ||
+            try(v.static_public_ip, false) == true ||
+            try(v.create_static_public_ip, false) == true ||
+            try(v.external_ip, false) == true
+          )
+          create_static_public_ip = (
+            try(nic.public_ip, "") == "STATIC" ||
+            try(nic.public_ip, "") == "static" ||
+            try(nic.static_public_ip, false) == true ||
+            try(nic.create_static_public_ip, false) == true ||
+            try(v.public_ip, "") == "STATIC" ||
+            try(v.public_ip, "") == "static" ||
+            try(v.static_public_ip, false) == true ||
+            try(v.create_static_public_ip, false) == true
+          )
+          nat_ip       = try(nic.nat_ip, try(v.nat_ip, null))
+          network_tier = try(nic.network_tier, "PREMIUM")
         }
       ]
 

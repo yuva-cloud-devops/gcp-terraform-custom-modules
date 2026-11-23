@@ -15,6 +15,22 @@
  */
 
 # ------------------------------------------------------------------------------
+# 0. Optional Reserved Regional Static External IP Addresses for Standalone VMs
+# ------------------------------------------------------------------------------
+resource "google_compute_address" "static_public_ips" {
+  for_each = {
+    for k, v in local.vm_instances_map : k => v
+    if v.create_static_public_ip
+  }
+
+  name         = "${each.value.name}-public-ip"
+  project      = each.value.project_id
+  region       = each.value.region
+  address_type = "EXTERNAL"
+  description  = "Reserved static external IP address for standalone VM ${each.value.name}"
+}
+
+# ------------------------------------------------------------------------------
 # 1. Standalone VM Instances Provisioned from an Instance Template
 # ------------------------------------------------------------------------------
 resource "google_compute_instance_from_template" "instances" {
@@ -44,7 +60,9 @@ resource "google_compute_instance_from_template" "instances" {
   deletion_protection = each.value.deletion_protection
 
   dynamic "network_interface" {
-    for_each = length(each.value.network_interfaces) > 0 && each.value.network_interfaces[0].subnetwork != null ? each.value.network_interfaces : []
+    for_each = length(each.value.network_interfaces) > 0 && (
+      each.value.network_interfaces[0].subnetwork != null || each.value.enable_public_ip
+    ) ? each.value.network_interfaces : []
     content {
       network    = network_interface.value.network
       subnetwork = network_interface.value.subnetwork
@@ -53,6 +71,11 @@ resource "google_compute_instance_from_template" "instances" {
       dynamic "access_config" {
         for_each = network_interface.value.enable_public_ip ? [1] : []
         content {
+          nat_ip = (
+            network_interface.value.create_static_public_ip ?
+            google_compute_address.static_public_ips[each.key].address :
+            network_interface.value.nat_ip
+          )
           network_tier = network_interface.value.network_tier
         }
       }
@@ -115,6 +138,11 @@ resource "google_compute_instance" "instances" {
       dynamic "access_config" {
         for_each = network_interface.value.enable_public_ip ? [1] : []
         content {
+          nat_ip = (
+            network_interface.value.create_static_public_ip ?
+            google_compute_address.static_public_ips[each.key].address :
+            network_interface.value.nat_ip
+          )
           network_tier = network_interface.value.network_tier
         }
       }

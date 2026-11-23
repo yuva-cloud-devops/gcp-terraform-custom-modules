@@ -174,11 +174,16 @@ compute_infrastructure:
   # 4. Standalone VM Instances (Jump Host, Custom DB, or Template-Derived)
   # ----------------------------------------------------------------------------
   vm_instances:
-    # Example A: Standalone VM derived from an Instance Template
+    # Example A: Standalone VM derived from an Instance Template with Public IP
     bastion-jump-host:
       instance_template: "app-web-template"
       zone: "asia-south1-a"
       tags: ["allow-iap-ssh"]
+      # Public IP Options:
+      # - Ephemeral public IP: enable_public_ip: true (or public_ip: true)
+      # - Dedicated reserved static external IP: static_public_ip: true (or public_ip: "STATIC")
+      # - Attach existing reserved external IP: nat_ip: "35.200.10.5"
+      enable_public_ip: true
       # Attach start/stop instance schedule
       instance_schedule: "dev-business-hours-schedule"
       # Attach disk snapshot schedule
