@@ -149,6 +149,17 @@ output "firestore_databases" {
   }
 }
 
+output "firestore_indexes" {
+  description = "Map of created Firestore composite indexes."
+  value = {
+    for k, v in google_firestore_index.indexes : k => {
+      id         = v.id
+      database   = v.database
+      collection = v.collection
+    }
+  }
+}
+
 # ------------------------------------------------------------------------------
 # Cloud Spanner Outputs
 # ------------------------------------------------------------------------------
@@ -218,6 +229,7 @@ output "database_summary" {
     alloydb_users_count       = length(google_alloydb_user.users)
     redis_instances_count     = length(google_redis_instance.instances)
     firestore_databases_count = length(google_firestore_database.databases)
+    firestore_indexes_count   = length(google_firestore_index.indexes)
     spanner_instances_count   = length(google_spanner_instance.instances)
     spanner_databases_count   = length(google_spanner_database.databases)
     bigtable_instances_count  = length(google_bigtable_instance.instances)

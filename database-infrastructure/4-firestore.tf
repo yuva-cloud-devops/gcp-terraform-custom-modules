@@ -59,3 +59,29 @@ resource "google_firestore_backup_schedule" "backup_schedules" {
     }
   }
 }
+
+# ------------------------------------------------------------------------------
+# Firestore Composite Indexes
+# ------------------------------------------------------------------------------
+
+resource "google_firestore_index" "indexes" {
+  for_each = local.firestore_indexes_map
+
+  project     = each.value.project_id
+  database    = google_firestore_database.databases[each.value.database_name].name
+  collection  = each.value.collection
+  query_scope = each.value.query_scope
+
+  dynamic "fields" {
+    for_each = each.value.fields
+    content {
+      field_path   = fields.value.field_path
+      order        = fields.value.order
+      array_config = fields.value.array_config
+    }
+  }
+
+  depends_on = [
+    google_firestore_database.databases
+  ]
+}

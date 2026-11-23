@@ -267,6 +267,7 @@ locals {
       point_in_time_recovery_enablement= upper(try(v.point_in_time_recovery_enablement, "POINT_IN_TIME_RECOVERY_ENABLED"))
       kms_key_name                     = try(v.kms_key_name, null)
       backup_schedules                 = try(v.backup_schedules, [])
+      indexes                          = try(v.indexes, [])
     } if can(v.type) || can(v.location_id) || can(v.location) || can(v.name)
   }
 
@@ -285,6 +286,29 @@ locals {
 
   firestore_backup_schedules_map = {
     for item in local.firestore_backup_schedules : item.key => item
+  }
+
+  firestore_indexes = flatten([
+    for db_key, db in local.firestore_databases_map : [
+      for idx_key, idx in db.indexes : {
+        key           = "${db.name}-${idx.collection}-${try(idx.name, tostring(idx_key))}"
+        database_name = db.name
+        project_id    = db.project_id
+        collection    = idx.collection
+        query_scope   = upper(try(idx.query_scope, "COLLECTION"))
+        fields        = [
+          for f in idx.fields : {
+            field_path   = f.field_path
+            order        = try(f.order, null) != null ? upper(f.order) : (try(f.array_config, null) != null ? null : "ASCENDING")
+            array_config = try(f.array_config, null) != null ? upper(f.array_config) : null
+          }
+        ]
+      }
+    ]
+  ])
+
+  firestore_indexes_map = {
+    for item in local.firestore_indexes : item.key => item
   }
 
   # ----------------------------------------------------------------------------
