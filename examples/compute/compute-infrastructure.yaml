@@ -1,0 +1,159 @@
+compute_infrastructure:
+  project_id: "yuvaraj-internal-project"
+  region: "asia-south1"
+  zone: "asia-south1-a"
+  network: "projects/yuvaraj-internal-project/global/networks/default"
+  subnetwork: "projects/yuvaraj-internal-project/regions/asia-south1/subnetworks/default"
+
+  # ----------------------------------------------------------------------------
+  # 1. Compute Resource Policies (Snapshot & Start/Stop Schedules)
+  # ----------------------------------------------------------------------------
+  compute_policies:
+    snapshot_schedules:
+      daily-snapshot-schedule:
+        description: "Automated daily disk snapshot schedule with 14-day retention"
+        schedule:
+          type: "daily"
+          start_time: "02:00" # UTC e.g. 02:00 AM
+        retention_days: 14
+        on_source_disk_delete: "KEEP_AUTO_SNAPSHOTS"
+        guest_flush: false
+        labels:
+          environment: "production"
+          compliance: "soc2"
+
+    instance_schedules:
+      business-hours-schedule:
+        description: "Business hours schedule: Mon-Fri 8:00 AM to 7:00 PM IST"
+        time_zone: "Asia/Kolkata"
+        vm_start_schedule: "0 8 * * 1-5" # Start at 8:00 AM IST
+        vm_stop_schedule: "0 19 * * 1-5"  # Stop at 7:00 PM IST
+
+  # ----------------------------------------------------------------------------
+  # 2. Instance Templates (Golden Image, Cloud-Init, Shielded VM, SAs)
+  # ----------------------------------------------------------------------------
+  instance_templates:
+    web-app-template:
+      machine_type: "e2-medium"
+      tags: ["allow-iap-ssh", "allow-health-check", "http-server"]
+      labels:
+        environment: "production"
+        tier: "frontend"
+      boot_disk:
+        # Consumes Packer-built golden image family (or standard public family)
+        source_image: "projects/debian-cloud/global/images/family/debian-12"
+        # Example when consuming custom Packer golden image family:
+        # image_family: "golden-base-debian"
+        # image_project: "yuvaraj-internal-project"
+        disk_type: "pd-balanced"
+        disk_size_gb: 20
+        auto_delete: true
+        # Attach snapshot schedule to template boot disk (applies to all MIG instances)
+        resource_policies: ["daily-snapshot-schedule"]
+      shielded_instance_config:
+        enable_secure_boot: true
+        enable_vtpm: true
+        enable_integrity_monitoring: true
+      service_account:
+        scopes: ["https://www.googleapis.com/auth/cloud-platform"]
+      # Cloud-Init bootstrap script for automated zero-touch provisioning
+      cloud_init: |
+        #cloud-config
+        package_upgrade: true
+        packages:
+          - nginx
+          - curl
+          - jq
+        write_files:
+          - path: /var/www/html/index.html
+            content: "<h1>Production Autohealing MIG - $(hostname)</h1>"
+            permissions: "0644"
+        runcmd:
+          - [ systemctl, restart, nginx ]
+
+  # ----------------------------------------------------------------------------
+  # 3. Autohealing Health Checks
+  # ----------------------------------------------------------------------------
+  health_checks:
+    web-app-health-check:
+      type: "HTTP"
+      port: 80
+      request_path: "/"
+      check_interval_sec: 10
+      timeout_sec: 5
+      healthy_threshold: 2
+      unhealthy_threshold: 3
+      enable_logging: false
+
+  # ----------------------------------------------------------------------------
+  # 4. Standalone VM Instances (From Template or Custom, with Schedules)
+  # ----------------------------------------------------------------------------
+  vm_instances:
+    # Example A: Standalone VM created from the reusable Instance Template
+    bastion-jump-host:
+      instance_template: "web-app-template"
+      zone: "asia-south1-a"
+      tags: ["allow-iap-ssh"]
+      # Attach start/stop instance schedule
+      instance_schedule: "business-hours-schedule"
+      # Attach disk snapshot schedule
+      snapshot_schedule: "daily-snapshot-schedule"
+
+    # Example B: Standalone custom VM with its own cloud-init bootstrap
+    custom-standalone-vm:
+      machine_type: "e2-micro"
+      zone: "asia-south1-a"
+      tags: ["allow-iap-ssh"]
+      boot_disk:
+        source_image: "projects/debian-cloud/global/images/family/debian-12"
+        disk_type: "pd-standard"
+        disk_size_gb: 15
+      cloud_init: |
+        #cloud-config
+        users:
+          - name: opsadmin
+            groups: sudo
+            shell: /bin/bash
+            sudo: ['ALL=(ALL) NOPASSWD:ALL']
+        packages:
+          - htop
+          - net-tools
+      instance_schedule: "business-hours-schedule"
+      snapshot_schedule: "daily-snapshot-schedule"
+
+  # ----------------------------------------------------------------------------
+  # 5. Managed Instance Groups (Regional Multi-Zone HA with Autohealing)
+  # ----------------------------------------------------------------------------
+  managed_instance_groups:
+    web-app-regional-mig:
+      type: "REGIONAL"
+      region: "asia-south1"
+      base_instance_name: "web-app"
+      instance_template: "web-app-template"
+      target_size: 2
+      auto_healing_policies:
+        health_check: "web-app-health-check"
+        initial_delay_sec: 300
+      update_policy:
+        type: "PROACTIVE"
+        minimal_action: "REPLACE"
+        max_surge_fixed: 1
+        max_unavailable_fixed: 0
+        replacement_method: "SUBSTITUTE"
+
+  # ----------------------------------------------------------------------------
+  # 6. Autoscaling Policies (Targeting Regional MIG)
+  # ----------------------------------------------------------------------------
+  autoscaling_policies:
+    web-app-autoscaler:
+      mig_name: "web-app-regional-mig"
+      min_replicas: 1
+      max_replicas: 5
+      cooldown_period: 60
+      cpu_target: 0.70
+      scaling_schedules:
+        - name: "business-hours-spike"
+          min_required_replicas: 2
+          schedule: "0 9 * * 1-5"
+          time_zone: "Asia/Kolkata"
+          duration_sec: 32400 # 9 hours
