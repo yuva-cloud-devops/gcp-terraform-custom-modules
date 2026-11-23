@@ -82,6 +82,14 @@ resource "google_compute_instance_from_template" "instances" {
     }
   }
 
+  # Attach VM start/stop instance schedule resource policy (max 1 policy supported by GCP)
+  resource_policies = each.value.instance_schedule != null && each.value.instance_schedule != "" ? [
+    try(
+      google_compute_resource_policy.instance_schedules[each.value.instance_schedule].self_link,
+      each.value.instance_schedule
+    )
+  ] : null
+
   metadata = length(each.value.metadata) > 0 ? each.value.metadata : null
 }
 
@@ -166,26 +174,19 @@ resource "google_compute_instance" "instances" {
   }
 
   metadata = each.value.metadata
+
+  # Attach VM start/stop instance schedule resource policy (max 1 policy supported by GCP)
+  resource_policies = each.value.instance_schedule != null && each.value.instance_schedule != "" ? [
+    try(
+      google_compute_resource_policy.instance_schedules[each.value.instance_schedule].self_link,
+      each.value.instance_schedule
+    )
+  ] : null
 }
 
 # ------------------------------------------------------------------------------
-# 3. Resource Policy Attachments (Instance Schedules & Disk Snapshots)
+# 3. Resource Policy Attachments (Disk Snapshots)
 # ------------------------------------------------------------------------------
-resource "google_compute_instance_resource_policy_attachment" "vm_instance_schedules" {
-  for_each = local.vm_instance_schedule_attachments
-
-  name = try(
-    google_compute_resource_policy.instance_schedules[each.value.instance_schedule].name,
-    each.value.instance_schedule
-  )
-  instance = try(
-    google_compute_instance_from_template.instances[each.key].name,
-    google_compute_instance.instances[each.key].name
-  )
-  zone    = each.value.zone
-  project = each.value.project_id
-}
-
 resource "google_compute_disk_resource_policy_attachment" "vm_boot_disk_snapshots" {
   for_each = local.vm_disk_snapshot_attachments
 

@@ -367,16 +367,6 @@ locals {
     for k, v in local.vm_instances_map : k => v if v.instance_template == null || v.instance_template == ""
   }
 
-  # Map for VM instance start/stop schedule policy attachment
-  vm_instance_schedule_attachments = {
-    for k, v in local.vm_instances_map : k => {
-      vm_name           = v.name
-      zone              = v.zone
-      project_id        = v.project_id
-      instance_schedule = v.instance_schedule
-    } if v.instance_schedule != null && v.instance_schedule != ""
-  }
-
   # Map for VM boot disk snapshot schedule policy attachment
   vm_disk_snapshot_attachments = {
     for k, v in local.vm_instances_map : k => {
