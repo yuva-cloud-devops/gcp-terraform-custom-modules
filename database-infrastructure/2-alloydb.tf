@@ -96,3 +96,17 @@ resource "google_alloydb_instance" "read_pools" {
     google_alloydb_instance.primary_instances
   ]
 }
+
+resource "google_alloydb_user" "users" {
+  for_each = local.alloydb_users_map
+
+  cluster        = google_alloydb_cluster.clusters[each.value.cluster_name].name
+  user_id        = each.value.user_id
+  user_type      = each.value.user_type
+  password       = each.value.password
+  database_roles = each.value.database_roles
+
+  depends_on = [
+    google_alloydb_instance.primary_instances
+  ]
+}

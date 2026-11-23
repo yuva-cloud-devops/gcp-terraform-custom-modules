@@ -99,6 +99,18 @@ output "alloydb_read_pools" {
   }
 }
 
+output "alloydb_users" {
+  description = "Map of created AlloyDB database users."
+  value = {
+    for k, v in google_alloydb_user.users : k => {
+      name           = v.user_id
+      cluster        = v.cluster
+      user_type      = v.user_type
+      database_roles = v.database_roles
+    }
+  }
+}
+
 # ------------------------------------------------------------------------------
 # Memorystore Redis Outputs
 # ------------------------------------------------------------------------------
@@ -203,6 +215,7 @@ output "database_summary" {
     cloud_sql_users_count     = length(google_sql_user.users)
     alloydb_clusters_count    = length(google_alloydb_cluster.clusters)
     alloydb_instances_count   = length(google_alloydb_instance.primary_instances) + length(google_alloydb_instance.read_pools)
+    alloydb_users_count       = length(google_alloydb_user.users)
     redis_instances_count     = length(google_redis_instance.instances)
     firestore_databases_count = length(google_firestore_database.databases)
     spanner_instances_count   = length(google_spanner_instance.instances)

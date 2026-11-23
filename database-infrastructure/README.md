@@ -126,6 +126,11 @@ alloydb:
         - instance_id: "analytics-read-pool-1"
           cpu_count: 2
           node_count: 1
+      users:
+        - name: "app_user"
+          password: "SuperSecretPassword123!"
+          database_roles:
+            - "alloydbsuperuser"
 
 # ------------------------------------------------------------------------------
 # 3. Memorystore Redis (In-Memory HA Cache)

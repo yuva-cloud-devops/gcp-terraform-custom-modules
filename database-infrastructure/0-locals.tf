@@ -157,6 +157,7 @@ locals {
       labels                           = try(v.labels, {})
       primary_instance                 = try(v.primary_instance, {})
       read_pools                       = try(v.read_pools, [])
+      users                            = try(v.users, [])
     }
   }
 
@@ -193,6 +194,30 @@ locals {
 
   alloydb_read_pools_map = {
     for item in local.alloydb_read_pools : item.key => item
+  }
+
+  alloydb_users = flatten([
+    for c_key, c in local.alloydb_clusters_map : [
+      for u in c.users : {
+        key            = "${c.cluster_id}-${try(u.name, try(u.user_id, tostring(u)))}"
+        cluster_name   = c.cluster_id
+        project_id     = c.project_id
+        user_id        = try(u.name, try(u.user_id, tostring(u)))
+        password       = try(u.password, null)
+        user_type      = (
+          upper(try(u.user_type, try(u.type, "ALLOYDB_BUILT_IN"))) == "BUILT_IN" ? "ALLOYDB_BUILT_IN" : (
+            upper(try(u.user_type, try(u.type, "ALLOYDB_BUILT_IN"))) == "IAM" ||
+            upper(try(u.user_type, try(u.type, "ALLOYDB_BUILT_IN"))) == "CLOUD_IAM_USER" ? "ALLOYDB_IAM_USER" :
+            upper(try(u.user_type, try(u.type, "ALLOYDB_BUILT_IN")))
+          )
+        )
+        database_roles = try(u.database_roles, try(u.roles, ["alloydbsuperuser"]))
+      }
+    ]
+  ])
+
+  alloydb_users_map = {
+    for item in local.alloydb_users : item.key => item
   }
 
   # ----------------------------------------------------------------------------
