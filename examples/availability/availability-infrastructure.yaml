@@ -1,0 +1,71 @@
+availability:
+  project_id: "yuvaraj-internal-project"
+  region: "asia-south1"
+
+  tags:
+    environment: "testing"
+    managed_by: "terraform"
+
+  # ============================================================================
+  # 1. Global External Application Load Balancer (Plug & Play - Attached to MIG)
+  # ============================================================================
+  external_http_lb:
+    name: "glb-web-app"
+    load_balancing_scheme: "EXTERNAL_MANAGED"
+    port: 80
+    target_mig: "web-app-regional-mig"
+    named_port: "http"
+
+    enable_cdn: true
+    cdn_policy:
+      cache_mode: "CACHE_ALL_STATIC"
+      default_ttl: 3600
+      max_ttl: 86400
+      client_ttl: 3600
+      negative_caching: true
+
+    health_check:
+      type: "HTTP"
+      port: 3000
+      request_path: "/"
+      check_interval_sec: 10
+      timeout_sec: 5
+      healthy_threshold: 2
+      unhealthy_threshold: 3
+      logging: true
+
+    outlier_detection:
+      consecutive_errors: 5
+      base_ejection_time:
+        seconds: 30
+
+    log_config:
+      enable: true
+      sample_rate: 1.0
+
+  # ============================================================================
+  # 2. Regional Internal L7 HTTP Load Balancer (Plug & Play)
+  # ============================================================================
+  # internal_http_lb:
+  #   name: "ilb-web-app"
+  #   network: "projects/yuvaraj-internal-project/global/networks/testing-environment-vpc"
+  #   subnetwork: "projects/yuvaraj-internal-project/regions/asia-south1/subnetworks/testing-environment-private-subnet-mumbai"
+  #   port: 80
+  #   target_mig: "web-app-regional-mig"
+  #   named_port: "http"
+  #   health_check:
+  #     port: 3000
+  #     request_path: "/"
+
+  # ============================================================================
+  # 3. Regional Internal L4 Passthrough TCP LB (Plug & Play Active-Passive)
+  # ============================================================================
+  # internal_tcp_lb:
+  #   name: "nlb-web-app"
+  #   network: "projects/yuvaraj-internal-project/global/networks/testing-environment-vpc"
+  #   subnetwork: "projects/yuvaraj-internal-project/regions/asia-south1/subnetworks/testing-environment-private-subnet-mumbai"
+  #   ports: ["3000"]
+  #   target_mig: "web-app-regional-mig"
+  #   health_check:
+  #     type: "TCP"
+  #     port: 3000

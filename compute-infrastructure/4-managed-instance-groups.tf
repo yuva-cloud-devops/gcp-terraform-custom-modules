@@ -65,6 +65,14 @@ resource "google_compute_region_instance_group_manager" "regional_migs" {
     }
   }
 
+  dynamic "named_port" {
+    for_each = each.value.named_ports
+    content {
+      name = named_port.value.name
+      port = named_port.value.port
+    }
+  }
+
   lifecycle {
     create_before_destroy = true
     ignore_changes        = [target_size]
@@ -115,6 +123,14 @@ resource "google_compute_instance_group_manager" "zonal_migs" {
         each.value.auto_healing_policies.health_check
       )
       initial_delay_sec = each.value.auto_healing_policies.initial_delay_sec
+    }
+  }
+
+  dynamic "named_port" {
+    for_each = each.value.named_ports
+    content {
+      name = named_port.value.name
+      port = named_port.value.port
     }
   }
 

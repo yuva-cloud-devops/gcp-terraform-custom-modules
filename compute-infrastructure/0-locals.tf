@@ -525,6 +525,14 @@ locals {
         replacement_method    = upper(try(v.update_policy.replacement_method, "SUBSTITUTE")) # SUBSTITUTE or RECREATE
       }
 
+      # Named Ports for Load Balancers (maps named ports like "http" -> 3000)
+      named_ports = [
+        for np in try(v.named_ports, [try(v.named_port, null)]) : {
+          name = tostring(try(np.name, "http"))
+          port = tonumber(try(np.port, 80))
+        } if np != null
+      ]
+
       # Compute Policies (Instance start/stop schedules for instances in MIG)
       instance_schedule = try(v.instance_schedule, try(v.policies.instance_schedule, null))
     }
