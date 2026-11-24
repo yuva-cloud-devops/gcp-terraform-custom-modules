@@ -15,6 +15,24 @@
  */
 
 # ------------------------------------------------------------------------------
+# 0. Regional Envoy Proxy-Only Subnet (Optional / On-Demand for INTERNAL_MANAGED)
+# ------------------------------------------------------------------------------
+resource "google_compute_subnetwork" "proxy_only" {
+  for_each = {
+    for k, v in local.internal_http_lbs : k => v
+    if v.proxy_only_subnet != null
+  }
+
+  name          = try(each.value.proxy_only_subnet.name, "${each.value.name}-proxy-subnet")
+  project       = each.value.project_id
+  region        = each.value.region
+  network       = each.value.network
+  ip_cidr_range = each.value.proxy_only_subnet.ip_cidr_range
+  purpose       = "REGIONAL_MANAGED_PROXY"
+  role          = "ACTIVE"
+}
+
+# ------------------------------------------------------------------------------
 # 1. Regional Static Internal IP Address
 # ------------------------------------------------------------------------------
 resource "google_compute_address" "internal_http_lb" {
@@ -170,6 +188,8 @@ resource "google_compute_forwarding_rule" "internal_http_lb" {
       each.value.create_address ? google_compute_address.internal_http_lb[each.key].address : null
     )
   )
+
+  depends_on = [google_compute_subnetwork.proxy_only]
 
   lifecycle {
     create_before_destroy = true

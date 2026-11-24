@@ -191,6 +191,9 @@ locals {
       )
 
       inline_health_check = try(v.health_check, null)
+
+      # Optional Regional Envoy Proxy-Only Subnet
+      proxy_only_subnet = try(v.proxy_only_subnet, null)
     }
   }
 
@@ -246,6 +249,9 @@ locals {
       )
 
       inline_health_check = try(v.health_check, null)
+
+      # Optional Regional Envoy Proxy-Only Subnet
+      proxy_only_subnet = try(v.proxy_only_subnet, null)
     }
   }
 
