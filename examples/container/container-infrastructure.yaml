@@ -1,0 +1,138 @@
+# ==============================================================================
+# Container Infrastructure Sample Configuration
+# Compatible with Google Kubernetes Engine (Standard / Autopilot), Artifact
+# Registry, Gateway API, and External KMS / Secret Manager Workload Integration.
+# ==============================================================================
+container_infrastructure:
+  project_id: "yuvaraj-internal-project"
+  region: "asia-south1"
+  network: "projects/yuvaraj-internal-project/global/networks/testing-environment-vpc"
+  subnetwork: "projects/yuvaraj-internal-project/regions/asia-south1/subnetworks/testing-environment-private-subnet-mumbai"
+  tags:
+    environment: "dev"
+    managed-by: "terraform"
+    tier: "container-platform"
+
+  # ============================================================================
+  # 1. Google Artifact Registry (GAR) Repositories
+  # ============================================================================
+  artifact_registries:
+    app-docker-repo:
+      description: "Docker repository for production and microservice container images"
+      format: "DOCKER"
+      immutable_tags: false
+      vulnerability_scanning: false
+      cleanup_policies:
+        keep_recent_versions:
+          action: "KEEP"
+          condition:
+            tag_state: "ANY"
+          most_recent_versions:
+            keep_count: 5
+
+  # ============================================================================
+  # 2. GKE Clusters (Standard Mode with VPC-Native Private Networking)
+  # ============================================================================
+  clusters:
+    gke-standard-cluster:
+      mode: "STANDARD" # Toggle to "AUTOPILOT" to switch engine modes
+      location: "asia-south1" # Regional high-availability control plane
+      pods_secondary_range_name: "gke-pods-mumbai"
+      services_secondary_range_name: "gke-services-mumbai"
+      master_ipv4_cidr_block: "172.16.0.0/28"
+      enable_private_nodes: true
+      enable_private_endpoint: false
+      release_channel: "REGULAR"
+      datapath_provider: "ADVANCED_DATAPATH" # Datapath v2 (eBPF)
+      workload_identity: true
+      deletion_protection: false
+
+      # ------------------------------------------------------------------------
+      # Optional: Attach External Cloud KMS Key for etcd Secrets Encryption
+      # (Uncomment and set key_name when an external KMS key exists)
+      # ------------------------------------------------------------------------
+      # database_encryption:
+      #   enabled: true
+      #   key_name: "projects/yuvaraj-internal-project/locations/asia-south1/keyRings/my-keyring/cryptoKeys/gke-secrets-key"
+
+      # ------------------------------------------------------------------------
+      # GKE Addons (Gateway API, Ingress HTTP LB, Secret Manager CSI Driver)
+      # ------------------------------------------------------------------------
+      addons:
+        http_load_balancing: true
+        gateway_api_channel: "CHANNEL_STANDARD" # Enables native K8s Gateway API Controller
+        secret_manager: true                    # Set true to install Secret Manager CSI Driver
+        gcs_fuse_csi_driver: false
+        dns_cache: true
+
+      master_authorized_networks:
+        - cidr_block: "0.0.0.0/0"
+          display_name: "public-admin-access"
+
+      # ------------------------------------------------------------------------
+      # Dedicated Standard Node Pools
+      # ------------------------------------------------------------------------
+      node_pools:
+        primary-pool:
+          machine_type: "e2-medium"
+          disk_size_gb: 30
+          disk_type: "pd-balanced"
+          spot: false
+          initial_node_count: 1
+          autoscaling:
+            min_node_count: 1
+            max_node_count: 3
+          management:
+            auto_repair: true
+            auto_upgrade: true
+          shielded_instance_config:
+            enable_secure_boot: true
+            enable_integrity_monitoring: true
+          labels:
+            tier: "primary"
+          tags:
+            - "gke-node"
+
+  # ============================================================================
+  # 3. GKE Ingress, Gateway API & Network Endpoint Groups (NEGs)
+  # ============================================================================
+  ingress_gateways:
+    ip_reservations:
+      # Global External Anycast IP for kind: Gateway (gke-l7-global-external-managed)
+      gke-public-gateway-ip:
+        type: "GLOBAL_EXTERNAL"
+        description: "Static Anycast IP for Public Gateway API"
+
+      # Regional Internal IP for kind: Gateway (gke-l7-rilb)
+      gke-internal-gateway-ip:
+        type: "REGIONAL_INTERNAL"
+        region: "asia-south1"
+        subnetwork: "projects/yuvaraj-internal-project/regions/asia-south1/subnetworks/testing-environment-private-subnet-mumbai"
+        description: "Static Internal IP for Internal Microservices Gateway"
+
+    standalone_negs:
+      gke-web-app-neg:
+        zone: "asia-south1-a"
+        network_endpoint_type: "GCE_VM_IP_PORT"
+        default_port: 80
+        description: "Standalone NEG for external Cloud Load Balancer integration"
+
+  # ============================================================================
+  # 4. External Secrets & Workload Identity Permissions
+  # ============================================================================
+  secrets_and_config:
+    # Grant Kubernetes Pods direct read access to existing Secret Manager secrets
+    secret_manager_access:
+      - secret_id: "app-database-credentials"
+        namespace: "default"
+        service_account: "app-workload-sa"
+
+    # (Optional) Dedicated Workload Identity Service Accounts (GSA <-> KSA mapping)
+    workload_service_accounts:
+      app-workload-gsa:
+        description: "Dedicated Google Service Account for web application Pods"
+        roles:
+          - "roles/secretmanager.secretAccessor"
+        k8s_bindings:
+          - namespace: "default"
+            service_account: "app-workload-sa"
