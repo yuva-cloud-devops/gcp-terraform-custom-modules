@@ -238,11 +238,12 @@ locals {
 
   secret_workload_access_bindings = [
     for item in local.raw_sm_access : {
-      key             = "${item.secret_id}-${item.namespace}-${item.service_account}"
-      secret_id       = item.secret_id
-      project_id      = try(item.project_id, local.default_project_id)
+      key             = "${replace(item.secret_id, "/", "-")}-${item.namespace}-${item.service_account}"
+      secret_id       = can(regex("^projects/.+/secrets/(.+)$", item.secret_id)) ? regex("^projects/.+/secrets/(.+)$", item.secret_id)[0] : item.secret_id
+      project_id      = can(regex("^projects/([^/]+)/secrets/.+$", item.secret_id)) ? regex("^projects/([^/]+)/secrets/.+$", item.secret_id)[0] : try(item.project_id, local.default_project_id)
       namespace       = item.namespace
       service_account = item.service_account
+      workload_pool   = "${local.default_project_id}.svc.id.goog"
     }
   ]
 

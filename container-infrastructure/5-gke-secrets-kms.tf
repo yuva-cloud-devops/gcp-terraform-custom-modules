@@ -48,7 +48,7 @@ resource "google_secret_manager_secret_iam_member" "direct_ksa_accessor" {
   project   = each.value.project_id
   secret_id = each.value.secret_id
   role      = "roles/secretmanager.secretAccessor"
-  member    = "serviceAccount:${each.value.project_id}.svc.id.goog[${each.value.namespace}/${each.value.service_account}]"
+  member    = "serviceAccount:${each.value.workload_pool}[${each.value.namespace}/${each.value.service_account}]"
 }
 
 # ------------------------------------------------------------------------------
