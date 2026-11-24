@@ -145,19 +145,20 @@ resource "google_container_cluster" "clusters" {
     }
   }
 
+  # GKE Gateway API Controller (Top-level block in google_container_cluster)
+  dynamic "gateway_api_config" {
+    for_each = each.value.gateway_api_channel != "CHANNEL_DISABLED" ? [1] : []
+    content {
+      channel = each.value.gateway_api_channel
+    }
+  }
+
   # ----------------------------------------------------------------------------
-  # Addons Configuration (Ingress HTTP LB, Gateway API, CSI Drivers, DNS Cache)
+  # Addons Configuration (Ingress HTTP LB, CSI Drivers, DNS Cache)
   # ----------------------------------------------------------------------------
   addons_config {
     http_load_balancing {
       disabled = !each.value.http_load_balancing
-    }
-
-    dynamic "gateway_api_config" {
-      for_each = each.value.gateway_api_channel != "CHANNEL_DISABLED" ? [1] : []
-      content {
-        channel = each.value.gateway_api_channel
-      }
     }
 
     dynamic "gcs_fuse_csi_driver_config" {

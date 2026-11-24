@@ -20,7 +20,7 @@
 output "artifact_registries" {
   description = "Detailed map of all created Artifact Registry repositories."
   value = {
-    for k, repo in google_artifact_registry_repository.repositories : k => {
+    for k, repo in google_artifact_registry_repository.registries : k => {
       id             = repo.id
       name           = repo.repository_id
       format         = repo.format
@@ -158,7 +158,7 @@ output "workload_service_accounts" {
 output "container_summary" {
   description = "Executive summary of container infrastructure provisioned."
   value = {
-    total_artifact_registries       = length(google_artifact_registry_repository.repositories)
+    total_artifact_registries       = length(google_artifact_registry_repository.registries)
     total_gke_clusters              = length(google_container_cluster.clusters)
     total_standard_node_pools       = length(google_container_node_pool.pools)
     total_gateway_ip_reservations   = length(google_compute_global_address.gateway_ips) + length(google_compute_address.gateway_ips)
