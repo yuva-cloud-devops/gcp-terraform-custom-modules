@@ -49,6 +49,11 @@ resource "google_secret_manager_secret_iam_member" "direct_ksa_accessor" {
   secret_id = each.value.secret_id
   role      = "roles/secretmanager.secretAccessor"
   member    = "serviceAccount:${each.value.workload_pool}[${each.value.namespace}/${each.value.service_account}]"
+
+  # Must wait for GKE cluster creation so the Workload Identity Pool (<project>.svc.id.goog) is initialized in IAM
+  depends_on = [
+    google_container_cluster.clusters
+  ]
 }
 
 # ------------------------------------------------------------------------------
@@ -81,5 +86,10 @@ resource "google_service_account_iam_member" "workload_identity_user" {
 
   service_account_id = google_service_account.workload_sas[each.value.sa_key].name
   role               = "roles/iam.workloadIdentityUser"
-  member             = "serviceAccount:${each.value.project_id}.svc.id.goog[${each.value.namespace}/${each.value.service_account}]"
+  member             = "serviceAccount:${local.default_project_id}.svc.id.goog[${each.value.namespace}/${each.value.service_account}]"
+
+  # Must wait for GKE cluster creation so the Workload Identity Pool is initialized in IAM
+  depends_on = [
+    google_container_cluster.clusters
+  ]
 }
