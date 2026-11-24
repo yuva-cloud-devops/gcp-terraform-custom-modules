@@ -42,7 +42,7 @@ locals {
         subnet_name         = try(subnet.subnet_name, subnet.name)
         ip_cidr             = try(subnet.subnet_ip, subnet.ip_cidr)
         region              = try(subnet.subnet_region, subnet.region, local.default_region)
-        private_access      = try(subnet.subnet_private_access, subnet.private_access, true)
+        private_access      = try(subnet.purpose, null) == "REGIONAL_MANAGED_PROXY" || try(subnet.purpose, null) == "INTERNAL_HTTPS_LOAD_BALANCER" ? null : try(subnet.subnet_private_access, subnet.private_access, true)
         private_ipv6_access = try(subnet.subnet_private_ipv6_access, subnet.private_ipv6_access, null)
         description         = try(subnet.description, null)
         purpose             = try(subnet.purpose, null)

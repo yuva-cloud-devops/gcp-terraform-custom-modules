@@ -10,7 +10,7 @@ resource "google_compute_subnetwork" "subnets" {
   ip_cidr_range              = each.value.ip_cidr
   region                     = each.value.region
   network                    = google_compute_network.vpcs[each.value.vpc_name].id
-  private_ip_google_access   = each.value.private_access
+  private_ip_google_access   = each.value.purpose == "REGIONAL_MANAGED_PROXY" || each.value.purpose == "INTERNAL_HTTPS_LOAD_BALANCER" ? null : each.value.private_access
   private_ipv6_google_access = each.value.private_ipv6_access
   description                = each.value.description
   purpose                    = each.value.purpose
