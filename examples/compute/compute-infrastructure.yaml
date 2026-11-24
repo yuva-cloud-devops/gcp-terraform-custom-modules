@@ -56,20 +56,8 @@ compute_infrastructure:
         enable_integrity_monitoring: true
       service_account:
         scopes: ["https://www.googleapis.com/auth/cloud-platform"]
-      # Cloud-Init bootstrap script for automated zero-touch provisioning
-      cloud_init: |
-        #cloud-config
-        package_upgrade: true
-        packages:
-          - nginx
-          - curl
-          - jq
-        write_files:
-          - path: /var/www/html/index.html
-            content: "<h1>Production Autohealing MIG - $(hostname)</h1>"
-            permissions: "0644"
-        runcmd:
-          - [ systemctl, restart, nginx ]
+      # External Shell Bootstrap Script file (passes shell script instead of inline)
+      cloud_init_file: "scripts/bastion-bootstrap.sh"
 
   # ----------------------------------------------------------------------------
   # 3. Autohealing Health Checks
@@ -102,7 +90,7 @@ compute_infrastructure:
       # Attach disk snapshot schedule
       snapshot_schedule: "daily-snapshot-schedule"
 
-    # Example B: Standalone custom VM with its own cloud-init bootstrap
+    # Example B: Standalone custom VM with its own shell script bootstrap
     custom-standalone-vm:
       machine_type: "e2-micro"
       zone: "asia-south1-a"
@@ -111,16 +99,8 @@ compute_infrastructure:
         source_image: "projects/debian-cloud/global/images/family/debian-12"
         disk_type: "pd-standard"
         disk_size_gb: 15
-      cloud_init: |
-        #cloud-config
-        users:
-          - name: opsadmin
-            groups: sudo
-            shell: /bin/bash
-            sudo: ['ALL=(ALL) NOPASSWD:ALL']
-        packages:
-          - htop
-          - net-tools
+      # External Shell Bootstrap Script file
+      cloud_init_file: "scripts/custom-vm-bootstrap.sh"
       instance_schedule: "business-hours-schedule"
       snapshot_schedule: "daily-snapshot-schedule"
 

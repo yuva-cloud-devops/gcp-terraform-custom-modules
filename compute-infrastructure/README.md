@@ -138,24 +138,16 @@ compute_infrastructure:
         enable_integrity_monitoring: true
       service_account:
         scopes: ["https://www.googleapis.com/auth/cloud-platform"]
-      # Cloud-init bootstrap script (YAML string or file path)
-      cloud_init: |
-        #cloud-config
-        package_upgrade: true
-        packages:
-          - nginx
-          - curl
-          - jq
-        write_files:
-          - path: /var/www/html/index.html
-            content: "<h1>Welcome to GCP Autohealing MIG with Cloud-Init - $(hostname)</h1>"
-            permissions: "0644"
-        runcmd:
-          - [ systemctl, restart, nginx ]
-      # Optional: Startup script executed on every boot
-      startup_script: |
-        #!/bin/bash
-        echo "Instance booted at $(date)" >> /var/log/boot-tracker.log
+      # Bootstrap Options: Pass external shell script file OR inline cloud-config
+      # Option 1: External script file path (relative to yaml config file)
+      cloud_init_file: "scripts/web-bootstrap.sh"
+      # Option 2: Inline Cloud-Config or shell script (uncomment if preferred)
+      # cloud_init: |
+      #   #cloud-config
+      #   packages:
+      #     - nginx
+      # Option 3: Optional Startup script executed on every boot
+      # startup_script_file: "scripts/on-boot.sh"
 
   # ----------------------------------------------------------------------------
   # 3. Autohealing Health Checks

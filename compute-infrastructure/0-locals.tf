@@ -25,6 +25,7 @@ locals {
   )
 
   cfg                = try(local.raw_config.compute_infrastructure, try(local.raw_config.compute, local.raw_config))
+  config_dir         = var.config_file_path != null && var.config_file_path != "" ? dirname(var.config_file_path) : path.root
   default_project_id = try(local.cfg.project_id, null)
   default_region     = try(local.cfg.region, "asia-south1")
   default_zone       = try(local.cfg.zone, "${local.default_region}-a")
@@ -171,19 +172,60 @@ locals {
       # Metadata, Cloud-Init Bootstrap & Startup Scripts
       metadata = merge(
         try(v.metadata, {}),
-        # 1. Cloud-Init Bootstrap Script (String, structured YAML object, or file path)
-        try(v.cloud_init, try(v.user_data, null)) != null ? {
-          "user-data" = can(tostring(try(v.cloud_init, try(v.user_data, null)))) ? (
-            tostring(try(v.cloud_init, try(v.user_data, null)))
-          ) : "#cloud-config\n${yamlencode(try(v.cloud_init, try(v.user_data, null)))}"
+        # 1. Cloud-Init / User-Data (File path or inline string/object)
+        try(v.cloud_init_file, try(v.cloud_init_path, try(v.user_data_file, try(v.user_data_path, null)))) != null ? {
+          "user-data" = (
+            can(fileexists(tostring(try(v.cloud_init_file, try(v.cloud_init_path, try(v.user_data_file, v.user_data_path)))))) &&
+            fileexists(tostring(try(v.cloud_init_file, try(v.cloud_init_path, try(v.user_data_file, v.user_data_path))))) ?
+            file(tostring(try(v.cloud_init_file, try(v.cloud_init_path, try(v.user_data_file, v.user_data_path))))) : (
+              can(fileexists("${local.config_dir}/${tostring(try(v.cloud_init_file, try(v.cloud_init_path, try(v.user_data_file, v.user_data_path))))}")) &&
+              fileexists("${local.config_dir}/${tostring(try(v.cloud_init_file, try(v.cloud_init_path, try(v.user_data_file, v.user_data_path))))}") ?
+              file("${local.config_dir}/${tostring(try(v.cloud_init_file, try(v.cloud_init_path, try(v.user_data_file, v.user_data_path))))}") :
+              file("${path.root}/${tostring(try(v.cloud_init_file, try(v.cloud_init_path, try(v.user_data_file, v.user_data_path))))}")
+            )
+          )
           } : (
-          try(v.cloud_init_path, try(v.user_data_path, null)) != null ? {
-            "user-data" = file(try(v.cloud_init_path, v.user_data_path))
+          try(v.cloud_init, try(v.user_data, null)) != null ? {
+            "user-data" = (
+              can(fileexists(tostring(try(v.cloud_init, v.user_data)))) &&
+              fileexists(tostring(try(v.cloud_init, v.user_data))) ?
+              file(tostring(try(v.cloud_init, v.user_data))) : (
+                can(fileexists("${local.config_dir}/${tostring(try(v.cloud_init, v.user_data))}")) &&
+                fileexists("${local.config_dir}/${tostring(try(v.cloud_init, v.user_data))}") ?
+                file("${local.config_dir}/${tostring(try(v.cloud_init, v.user_data))}") : (
+                  can(tostring(try(v.cloud_init, v.user_data))) ?
+                  tostring(try(v.cloud_init, v.user_data)) :
+                  "#cloud-config\n${yamlencode(try(v.cloud_init, v.user_data))}"
+                )
+              )
+            )
           } : {}
         ),
-        # 2. Traditional Startup Script (inline or path)
-        try(v.startup_script, null) != null ? { "startup-script" = v.startup_script } : (
-          try(v.startup_script_path, null) != null ? { "startup-script" = file(v.startup_script_path) } : {}
+        # 2. Startup Script (Explicit file path or inline script)
+        try(v.startup_script_file, try(v.startup_script_path, try(v.shell_script_file, try(v.shell_script_path, null)))) != null ? {
+          "startup-script" = (
+            can(fileexists(tostring(try(v.startup_script_file, try(v.startup_script_path, try(v.shell_script_file, v.shell_script_path)))))) &&
+            fileexists(tostring(try(v.startup_script_file, try(v.startup_script_path, try(v.shell_script_file, v.shell_script_path))))) ?
+            file(tostring(try(v.startup_script_file, try(v.startup_script_path, try(v.shell_script_file, v.shell_script_path))))) : (
+              can(fileexists("${local.config_dir}/${tostring(try(v.startup_script_file, try(v.startup_script_path, try(v.shell_script_file, v.shell_script_path))))}")) &&
+              fileexists("${local.config_dir}/${tostring(try(v.startup_script_file, try(v.startup_script_path, try(v.shell_script_file, v.shell_script_path))))}") ?
+              file("${local.config_dir}/${tostring(try(v.startup_script_file, try(v.startup_script_path, try(v.shell_script_file, v.shell_script_path))))}") :
+              file("${path.root}/${tostring(try(v.startup_script_file, try(v.startup_script_path, try(v.shell_script_file, v.shell_script_path))))}")
+            )
+          )
+          } : (
+          try(v.startup_script, try(v.shell_script, null)) != null ? {
+            "startup-script" = (
+              can(fileexists(tostring(try(v.startup_script, v.shell_script)))) &&
+              fileexists(tostring(try(v.startup_script, v.shell_script))) ?
+              file(tostring(try(v.startup_script, v.shell_script))) : (
+                can(fileexists("${local.config_dir}/${tostring(try(v.startup_script, v.shell_script))}")) &&
+                fileexists("${local.config_dir}/${tostring(try(v.startup_script, v.shell_script))}") ?
+                file("${local.config_dir}/${tostring(try(v.startup_script, v.shell_script))}") :
+                tostring(try(v.startup_script, v.shell_script))
+              )
+            )
+          } : {}
         ),
         # 3. Cloud Storage Startup Script URL
         try(v.startup_script_url, null) != null ? { "startup-script-url" = v.startup_script_url } : {}
@@ -332,19 +374,60 @@ locals {
       # Metadata, Cloud-Init Bootstrap & Startup Scripts
       metadata = merge(
         try(v.metadata, {}),
-        # 1. Cloud-Init Bootstrap Script (String, structured YAML object, or file path)
-        try(v.cloud_init, try(v.user_data, null)) != null ? {
-          "user-data" = can(tostring(try(v.cloud_init, try(v.user_data, null)))) ? (
-            tostring(try(v.cloud_init, try(v.user_data, null)))
-          ) : "#cloud-config\n${yamlencode(try(v.cloud_init, try(v.user_data, null)))}"
+        # 1. Cloud-Init / User-Data (File path or inline string/object)
+        try(v.cloud_init_file, try(v.cloud_init_path, try(v.user_data_file, try(v.user_data_path, null)))) != null ? {
+          "user-data" = (
+            can(fileexists(tostring(try(v.cloud_init_file, try(v.cloud_init_path, try(v.user_data_file, v.user_data_path)))))) &&
+            fileexists(tostring(try(v.cloud_init_file, try(v.cloud_init_path, try(v.user_data_file, v.user_data_path))))) ?
+            file(tostring(try(v.cloud_init_file, try(v.cloud_init_path, try(v.user_data_file, v.user_data_path))))) : (
+              can(fileexists("${local.config_dir}/${tostring(try(v.cloud_init_file, try(v.cloud_init_path, try(v.user_data_file, v.user_data_path))))}")) &&
+              fileexists("${local.config_dir}/${tostring(try(v.cloud_init_file, try(v.cloud_init_path, try(v.user_data_file, v.user_data_path))))}") ?
+              file("${local.config_dir}/${tostring(try(v.cloud_init_file, try(v.cloud_init_path, try(v.user_data_file, v.user_data_path))))}") :
+              file("${path.root}/${tostring(try(v.cloud_init_file, try(v.cloud_init_path, try(v.user_data_file, v.user_data_path))))}")
+            )
+          )
           } : (
-          try(v.cloud_init_path, try(v.user_data_path, null)) != null ? {
-            "user-data" = file(try(v.cloud_init_path, v.user_data_path))
+          try(v.cloud_init, try(v.user_data, null)) != null ? {
+            "user-data" = (
+              can(fileexists(tostring(try(v.cloud_init, v.user_data)))) &&
+              fileexists(tostring(try(v.cloud_init, v.user_data))) ?
+              file(tostring(try(v.cloud_init, v.user_data))) : (
+                can(fileexists("${local.config_dir}/${tostring(try(v.cloud_init, v.user_data))}")) &&
+                fileexists("${local.config_dir}/${tostring(try(v.cloud_init, v.user_data))}") ?
+                file("${local.config_dir}/${tostring(try(v.cloud_init, v.user_data))}") : (
+                  can(tostring(try(v.cloud_init, v.user_data))) ?
+                  tostring(try(v.cloud_init, v.user_data)) :
+                  "#cloud-config\n${yamlencode(try(v.cloud_init, v.user_data))}"
+                )
+              )
+            )
           } : {}
         ),
-        # 2. Traditional Startup Script (inline or path)
-        try(v.startup_script, null) != null ? { "startup-script" = v.startup_script } : (
-          try(v.startup_script_path, null) != null ? { "startup-script" = file(v.startup_script_path) } : {}
+        # 2. Startup Script (Explicit file path or inline script)
+        try(v.startup_script_file, try(v.startup_script_path, try(v.shell_script_file, try(v.shell_script_path, null)))) != null ? {
+          "startup-script" = (
+            can(fileexists(tostring(try(v.startup_script_file, try(v.startup_script_path, try(v.shell_script_file, v.shell_script_path)))))) &&
+            fileexists(tostring(try(v.startup_script_file, try(v.startup_script_path, try(v.shell_script_file, v.shell_script_path))))) ?
+            file(tostring(try(v.startup_script_file, try(v.startup_script_path, try(v.shell_script_file, v.shell_script_path))))) : (
+              can(fileexists("${local.config_dir}/${tostring(try(v.startup_script_file, try(v.startup_script_path, try(v.shell_script_file, v.shell_script_path))))}")) &&
+              fileexists("${local.config_dir}/${tostring(try(v.startup_script_file, try(v.startup_script_path, try(v.shell_script_file, v.shell_script_path))))}") ?
+              file("${local.config_dir}/${tostring(try(v.startup_script_file, try(v.startup_script_path, try(v.shell_script_file, v.shell_script_path))))}") :
+              file("${path.root}/${tostring(try(v.startup_script_file, try(v.startup_script_path, try(v.shell_script_file, v.shell_script_path))))}")
+            )
+          )
+          } : (
+          try(v.startup_script, try(v.shell_script, null)) != null ? {
+            "startup-script" = (
+              can(fileexists(tostring(try(v.startup_script, v.shell_script)))) &&
+              fileexists(tostring(try(v.startup_script, v.shell_script))) ?
+              file(tostring(try(v.startup_script, v.shell_script))) : (
+                can(fileexists("${local.config_dir}/${tostring(try(v.startup_script, v.shell_script))}")) &&
+                fileexists("${local.config_dir}/${tostring(try(v.startup_script, v.shell_script))}") ?
+                file("${local.config_dir}/${tostring(try(v.startup_script, v.shell_script))}") :
+                tostring(try(v.startup_script, v.shell_script))
+              )
+            )
+          } : {}
         ),
         # 3. Cloud Storage Startup Script URL
         try(v.startup_script_url, null) != null ? { "startup-script-url" = v.startup_script_url } : {}
