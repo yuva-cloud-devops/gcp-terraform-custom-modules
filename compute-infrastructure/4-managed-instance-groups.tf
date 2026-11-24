@@ -48,7 +48,8 @@ resource "google_compute_region_instance_group_manager" "regional_migs" {
   update_policy {
     type                  = each.value.update_policy.type
     minimal_action        = each.value.update_policy.minimal_action
-    max_surge_fixed       = each.value.update_policy.max_surge_fixed
+    # In Regional MIGs, GCP requires max_surge_fixed to be either 0 or at least equal to the number of distribution zones
+    max_surge_fixed       = each.value.update_policy.type == "PROACTIVE" ? (each.value.update_policy.max_surge_fixed > 0 && each.value.update_policy.max_surge_fixed < length(each.value.distribution_policy_zones) ? length(each.value.distribution_policy_zones) : each.value.update_policy.max_surge_fixed) : null
     max_unavailable_fixed = each.value.update_policy.max_unavailable_fixed
     replacement_method    = each.value.update_policy.replacement_method
   }
