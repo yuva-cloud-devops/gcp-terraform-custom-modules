@@ -56,10 +56,13 @@ container_infrastructure:
       cleanup_policies:
         keep_recent_versions:
           action: "KEEP"
-          condition:
-            tag_state: "ANY"
           most_recent_versions:
             keep_count: 5
+        delete_untagged:
+          action: "DELETE"
+          condition:
+            tag_state: "UNTAGGED"
+            older_than: "604800s" # 7 days
 
   # ==========================================================================
   # 2. GKE Clusters (Standard or Autopilot)

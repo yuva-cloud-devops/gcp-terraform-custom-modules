@@ -44,7 +44,7 @@ resource "google_artifact_registry_repository" "registries" {
       action = upper(try(cleanup_policies.value.action, "DELETE"))
 
       dynamic "condition" {
-        for_each = try(cleanup_policies.value.condition, null) != null ? [cleanup_policies.value.condition] : []
+        for_each = try(cleanup_policies.value.most_recent_versions, null) == null && try(cleanup_policies.value.condition, null) != null ? [cleanup_policies.value.condition] : []
         content {
           tag_state             = try(condition.value.tag_state, null)
           tag_prefixes          = try(condition.value.tag_prefixes, null)
