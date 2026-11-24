@@ -61,8 +61,9 @@ resource "google_compute_region_backend_service" "internal_tcp_lb" {
   dynamic "backend" {
     for_each = each.value.primary_backends
     content {
-      group    = backend.value
-      failover = false
+      group          = backend.value
+      balancing_mode = "CONNECTION"
+      failover       = false
     }
   }
 
@@ -70,8 +71,9 @@ resource "google_compute_region_backend_service" "internal_tcp_lb" {
   dynamic "backend" {
     for_each = each.value.failover_backends
     content {
-      group    = backend.value
-      failover = true
+      group          = backend.value
+      balancing_mode = "CONNECTION"
+      failover       = true
     }
   }
 
