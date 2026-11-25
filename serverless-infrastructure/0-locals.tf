@@ -91,6 +91,9 @@ locals {
       create_sa           = try(v.create_service_account, v.service_account == null)
       deletion_protection = try(v.deletion_protection, false)
 
+      # Custom Domain Mappings
+      domain_mappings = try(v.domain_mappings, [])
+
       # Traffic Splitting (Canary / Revisions)
       traffic = try(v.traffic, [
         {
@@ -114,6 +117,37 @@ locals {
       }
     ]
   ])
+
+  # Custom Domain Mappings (Supports both root-level domain_mappings and inline service domain_mappings)
+  raw_domain_mappings = try(local.cfg.domain_mappings, {})
+
+  domain_mappings = merge(
+    {
+      for k, v in local.raw_domain_mappings : try(v.domain, try(v.name, tostring(k))) => {
+        domain           = try(v.domain, try(v.name, tostring(k)))
+        service_name     = v.service
+        location         = try(v.location, try(v.region, local.default_region))
+        project_id       = try(v.project_id, local.default_project_id)
+        force_override   = try(v.force_override, false)
+        certificate_mode = try(v.certificate_mode, "AUTOMATIC")
+      }
+    },
+    {
+      for item in flatten([
+        for svc_key, svc in local.cloud_run_services : [
+          for d in svc.domain_mappings : {
+            key              = try(d.domain, tostring(d))
+            domain           = try(d.domain, tostring(d))
+            service_name     = svc.name
+            location         = svc.location
+            project_id       = svc.project_id
+            force_override   = try(d.force_override, false)
+            certificate_mode = try(d.certificate_mode, "AUTOMATIC")
+          }
+        ]
+      ]) : item.key => item
+    }
+  )
 
   # ----------------------------------------------------------------------------
   # 2. Cloud Run Jobs (v2 API for Batch / DB Migrations)

@@ -39,6 +39,11 @@ output "cloud_run_jobs" {
   value       = module.serverless_infrastructure.cloud_run_jobs
 }
 
+output "cloud_run_domain_mappings" {
+  description = "Cloud Run custom domain mappings and DNS records"
+  value       = module.serverless_infrastructure.cloud_run_domain_mappings
+}
+
 output "cloud_functions" {
   description = "Cloud Functions 2nd Gen details and URIs"
   value       = module.serverless_infrastructure.cloud_functions

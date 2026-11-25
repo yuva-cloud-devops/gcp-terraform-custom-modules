@@ -96,6 +96,9 @@ serverless_infrastructure:
           memory: "512Mi"
       direct_vpc_egress:
         enabled: false
+      domain_mappings:
+        - domain: "api.example.com"
+          force_override: false
 
     # Internal Microservice (Private Database Access via Direct VPC Egress)
     internal-order-service:
@@ -175,4 +178,13 @@ serverless_infrastructure:
                   - status: "STARTED"
             - return_status:
                 return: ${status}
+
+  # ============================================================================
+  # 6. Custom Domain Mappings (Optional)
+  # ============================================================================
+  domain_mappings:
+    app-custom-domain:
+      domain: "app.yourdomain.com"
+      service: "public-api"
+      force_override: false
 ```

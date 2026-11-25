@@ -164,3 +164,26 @@ resource "google_cloud_run_v2_service_iam_member" "invokers" {
   role     = "roles/run.invoker"
   member   = each.value.member
 }
+
+# ------------------------------------------------------------------------------
+# 4. Custom Domain Mappings
+# ------------------------------------------------------------------------------
+resource "google_cloud_run_domain_mapping" "domain_mappings" {
+  for_each = local.domain_mappings
+
+  location = each.value.location
+  name     = each.value.domain
+  project  = each.value.project_id
+
+  metadata {
+    namespace = each.value.project_id
+  }
+
+  spec {
+    route_name       = try(google_cloud_run_v2_service.services[each.value.service_name].name, each.value.service_name)
+    force_override   = each.value.force_override
+    certificate_mode = each.value.certificate_mode
+  }
+
+  depends_on = [google_cloud_run_v2_service.services]
+}

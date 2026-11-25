@@ -126,6 +126,18 @@ output "cloud_scheduler_jobs" {
   }
 }
 
+output "cloud_run_domain_mappings" {
+  description = "Detailed map of Cloud Run custom domain mappings and required DNS records."
+  value = {
+    for k, dm in google_cloud_run_domain_mapping.domain_mappings : k => {
+      id               = dm.id
+      domain           = dm.name
+      service          = dm.spec[0].route_name
+      resource_records = try(dm.status[0].resource_records, [])
+    }
+  }
+}
+
 # ------------------------------------------------------------------------------
 # 7. Summary Output
 # ------------------------------------------------------------------------------
@@ -134,6 +146,7 @@ output "serverless_summary" {
   value = {
     cloud_run_services_count   = length(google_cloud_run_v2_service.services)
     cloud_run_jobs_count       = length(google_cloud_run_v2_job.jobs)
+    domain_mappings_count      = length(google_cloud_run_domain_mapping.domain_mappings)
     cloud_functions_count      = length(google_cloudfunctions2_function.functions)
     cloud_workflows_count      = length(google_workflows_workflow.workflows)
     eventarc_triggers_count    = length(google_eventarc_trigger.triggers)
