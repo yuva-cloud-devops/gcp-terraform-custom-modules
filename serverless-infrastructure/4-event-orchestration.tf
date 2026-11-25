@@ -81,6 +81,32 @@ resource "google_project_iam_member" "gcs_pubsub_publisher" {
   member  = "serviceAccount:${data.google_storage_project_service_account.gcs_account[0].email_address}"
 }
 
+# Grant Eventarc Event Receiver role to trigger service account
+resource "google_project_iam_member" "trigger_receiver_role" {
+  for_each = {
+    for k, v in local.eventarc_triggers : k => v
+    if v.service_account != null
+  }
+
+  project = each.value.project_id
+  role    = "roles/eventarc.eventReceiver"
+  member  = "serviceAccount:${each.value.service_account}"
+}
+
+# Grant Cloud Run Invoker role to trigger service account for the destination service
+resource "google_cloud_run_v2_service_iam_member" "trigger_invoker_role" {
+  for_each = {
+    for k, v in local.eventarc_triggers : k => v
+    if v.service_account != null && v.destination_run_service != null
+  }
+
+  project  = each.value.project_id
+  location = each.value.location
+  name     = try(google_cloud_run_v2_service.services[each.value.destination_run_service].name, each.value.destination_run_service)
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:${each.value.service_account}"
+}
+
 # ------------------------------------------------------------------------------
 # 3. Eventarc Triggers (Decoupled Event Router for Cloud Run / Workflows)
 # ------------------------------------------------------------------------------
@@ -118,6 +144,8 @@ resource "google_eventarc_trigger" "triggers" {
 
   depends_on = [
     google_project_iam_member.eventarc_sa_role,
-    google_project_iam_member.gcs_pubsub_publisher
+    google_project_iam_member.gcs_pubsub_publisher,
+    google_project_iam_member.trigger_receiver_role,
+    google_cloud_run_v2_service_iam_member.trigger_invoker_role
   ]
 }
