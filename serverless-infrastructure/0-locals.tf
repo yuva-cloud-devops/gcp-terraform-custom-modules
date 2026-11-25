@@ -315,7 +315,6 @@ locals {
       # Rate Limiting
       max_dispatches_per_second = tonumber(try(v.rate_limits.max_dispatches_per_second, try(v.max_dispatches_per_second, 50)))
       max_concurrent_dispatches = tonumber(try(v.rate_limits.max_concurrent_dispatches, try(v.max_concurrent_dispatches, 10)))
-      max_burst_size            = tonumber(try(v.rate_limits.max_burst_size, try(v.max_burst_size, 100)))
 
       # Retry Parameters
       max_attempts       = tonumber(try(v.retry_config.max_attempts, try(v.max_attempts, 5)))

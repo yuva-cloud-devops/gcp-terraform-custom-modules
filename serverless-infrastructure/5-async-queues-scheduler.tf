@@ -27,7 +27,6 @@ resource "google_cloud_tasks_queue" "queues" {
   rate_limits {
     max_dispatches_per_second = each.value.max_dispatches_per_second
     max_concurrent_dispatches = each.value.max_concurrent_dispatches
-    max_burst_size            = each.value.max_burst_size
   }
 
   retry_config {
