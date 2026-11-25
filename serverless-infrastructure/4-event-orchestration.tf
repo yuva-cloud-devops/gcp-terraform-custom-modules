@@ -52,7 +52,37 @@ resource "google_workflows_workflow" "workflows" {
 }
 
 # ------------------------------------------------------------------------------
-# 2. Eventarc Triggers (Decoupled Event Router for Cloud Run / Workflows)
+# 2. Eventarc Service Agent & IAM Automation
+# Automatically provisions and grants required roles to Eventarc and Storage SAs
+# ------------------------------------------------------------------------------
+resource "google_project_service_identity" "eventarc_sa" {
+  provider = google-beta
+  count    = length(local.eventarc_triggers) > 0 ? 1 : 0
+  project  = local.default_project_id
+  service  = "eventarc.googleapis.com"
+}
+
+resource "google_project_iam_member" "eventarc_sa_role" {
+  count   = length(local.eventarc_triggers) > 0 ? 1 : 0
+  project = local.default_project_id
+  role    = "roles/eventarc.serviceAgent"
+  member  = "serviceAccount:${google_project_service_identity.eventarc_sa[0].email}"
+}
+
+data "google_storage_project_service_account" "gcs_account" {
+  count   = length(local.eventarc_triggers) > 0 ? 1 : 0
+  project = local.default_project_id
+}
+
+resource "google_project_iam_member" "gcs_pubsub_publisher" {
+  count   = length(local.eventarc_triggers) > 0 ? 1 : 0
+  project = local.default_project_id
+  role    = "roles/pubsub.publisher"
+  member  = "serviceAccount:${data.google_storage_project_service_account.gcs_account[0].email_address}"
+}
+
+# ------------------------------------------------------------------------------
+# 3. Eventarc Triggers (Decoupled Event Router for Cloud Run / Workflows)
 # ------------------------------------------------------------------------------
 resource "google_eventarc_trigger" "triggers" {
   for_each = local.eventarc_triggers
@@ -85,4 +115,9 @@ resource "google_eventarc_trigger" "triggers" {
   }
 
   service_account = each.value.service_account
+
+  depends_on = [
+    google_project_iam_member.eventarc_sa_role,
+    google_project_iam_member.gcs_pubsub_publisher
+  ]
 }
