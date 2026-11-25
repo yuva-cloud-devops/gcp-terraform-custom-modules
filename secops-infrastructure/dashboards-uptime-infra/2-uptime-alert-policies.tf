@@ -24,7 +24,7 @@ resource "google_monitoring_alert_policy" "uptime_failure_alerts" {
   conditions {
     display_name = "Uptime Check Health - ${each.value.uptime_check_name}"
     condition_threshold {
-      filter          = "metric.type=\"monitoring.googleapis.com/uptime_check/check_passed\" AND metric.label.check_id=\"${google_monitoring_uptime_check_config.uptime_checks[each.key].uptime_check_id}\""
+      filter          = "resource.type=\"uptime_url\" AND metric.type=\"monitoring.googleapis.com/uptime_check/check_passed\" AND metric.label.check_id=\"${google_monitoring_uptime_check_config.uptime_checks[each.key].uptime_check_id}\""
       comparison      = "COMPARISON_GT"
       threshold_value = 0
       duration        = "60s"
@@ -71,7 +71,7 @@ resource "google_monitoring_alert_policy" "ssl_expiry_alerts" {
   conditions {
     display_name = "Time Until Certificate Expiry < ${each.value.ssl_expiry_days} Days"
     condition_threshold {
-      filter          = "metric.type=\"monitoring.googleapis.com/uptime_check/time_until_ssl_cert_expires\" AND metric.label.check_id=\"${google_monitoring_uptime_check_config.uptime_checks[each.key].uptime_check_id}\""
+      filter          = "resource.type=\"uptime_url\" AND metric.type=\"monitoring.googleapis.com/uptime_check/time_until_ssl_cert_expires\" AND metric.label.check_id=\"${google_monitoring_uptime_check_config.uptime_checks[each.key].uptime_check_id}\""
       comparison      = "COMPARISON_LT"
       threshold_value = each.value.threshold_seconds
       duration        = "300s"
