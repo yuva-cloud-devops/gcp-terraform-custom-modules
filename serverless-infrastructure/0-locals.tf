@@ -88,7 +88,7 @@ locals {
 
       # Identity & Security
       service_account     = try(v.service_account, null)
-      create_sa           = try(v.create_service_account, v.service_account == null)
+      create_sa           = try(v.create_service_account, try(v.service_account, null) == null)
       deletion_protection = try(v.deletion_protection, false)
 
       # Custom Domain Mappings
@@ -191,7 +191,7 @@ locals {
 
       # Identity & Protection
       service_account     = try(v.service_account, null)
-      create_sa           = try(v.create_service_account, v.service_account == null)
+      create_sa           = try(v.create_service_account, try(v.service_account, null) == null)
       deletion_protection = try(v.deletion_protection, false)
     }
   }
@@ -238,7 +238,7 @@ locals {
 
       # Identity
       service_account = try(v.service_account, null)
-      create_sa       = try(v.create_service_account, v.service_account == null)
+      create_sa       = try(v.create_service_account, try(v.service_account, null) == null)
     }
   }
 
@@ -297,7 +297,7 @@ locals {
       labels          = merge(local.default_tags, try(v.labels, {}))
       source_contents = try(v.source_contents, null)
       service_account = try(v.service_account, null)
-      create_sa       = try(v.create_service_account, v.service_account == null)
+      create_sa       = try(v.create_service_account, try(v.service_account, null) == null)
     }
   }
 
