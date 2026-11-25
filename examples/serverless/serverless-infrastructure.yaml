@@ -1,0 +1,138 @@
+# ==============================================================================
+# Serverless Infrastructure Configuration (YAML Specification)
+# Modern 2024+ Serverless with Direct VPC Egress & Internal/External Options
+# ==============================================================================
+
+serverless_infrastructure:
+  project_id: "yuvaraj-internal-project"
+  region: "asia-south1"
+  network: "projects/yuvaraj-internal-project/global/networks/testing-environment-vpc"
+  subnetwork: "projects/yuvaraj-internal-project/regions/asia-south1/subnetworks/testing-environment-private-subnet-mumbai"
+  
+  tags:
+    environment: "dev"
+    managed-by: "terraform"
+    module: "serverless-infrastructure"
+
+  vpc_access:
+    egress_mode: "PRIVATE_RANGES_ONLY"
+
+  # ----------------------------------------------------------------------------
+  # 1. Cloud Run Services (v2 API)
+  # ----------------------------------------------------------------------------
+  cloud_run_services:
+    # --- Public External HTTP Service ---
+    public-api-service:
+      name: "public-api-service"
+      description: "Public-facing HTTP API service accessible from the internet"
+      image: "asia-south1-docker.pkg.dev/yuvaraj-internal-project/app-docker-repo/nginx:v1.0"
+      port: 80
+      ingress: "INGRESS_TRAFFIC_ALL"
+      allow_unauthenticated: true
+      concurrency: 80
+      scaling:
+        min_instances: 0
+        max_instances: 5
+      resources:
+        limits:
+          cpu: "1"
+          memory: "512Mi"
+      env:
+        APP_ENV: "production"
+        LOG_LEVEL: "info"
+
+    # --- Internal Private Microservice (Direct VPC Egress) ---
+    private-backend-service:
+      name: "private-backend-service"
+      description: "Internal-only microservice isolated inside VPC via Direct VPC Egress"
+      image: "asia-south1-docker.pkg.dev/yuvaraj-internal-project/app-docker-repo/nginx:v1.0"
+      port: 80
+      ingress: "INGRESS_TRAFFIC_INTERNAL_ONLY"
+      allow_unauthenticated: false
+      concurrency: 50
+      scaling:
+        min_instances: 0
+        max_instances: 3
+      resources:
+        limits:
+          cpu: "1"
+          memory: "512Mi"
+      direct_vpc_egress:
+        enabled: true
+        subnetwork: "projects/yuvaraj-internal-project/regions/asia-south1/subnetworks/testing-environment-private-subnet-mumbai"
+        egress_mode: "PRIVATE_RANGES_ONLY"
+      env:
+        SERVICE_ROLE: "backend"
+        DB_HOST: "10.10.1.15"
+
+  # ----------------------------------------------------------------------------
+  # 2. Cloud Run Jobs (v2 API for Batch Processing & DB Migrations)
+  # ----------------------------------------------------------------------------
+  cloud_run_jobs:
+    db-migration-job:
+      name: "db-migration-job"
+      description: "Batch run-to-completion job for DB migrations with Direct VPC Egress"
+      image: "asia-south1-docker.pkg.dev/yuvaraj-internal-project/app-docker-repo/nginx:v1.0"
+      task_count: 1
+      parallelism: 1
+      max_retries: 2
+      timeout: "300s"
+      resources:
+        limits:
+          cpu: "1"
+          memory: "512Mi"
+      direct_vpc_egress:
+        enabled: true
+        subnetwork: "projects/yuvaraj-internal-project/regions/asia-south1/subnetworks/testing-environment-private-subnet-mumbai"
+        egress_mode: "PRIVATE_RANGES_ONLY"
+      env:
+        ACTION: "migrate"
+
+  # ----------------------------------------------------------------------------
+  # 3. Event Orchestration (Cloud Workflows)
+  # ----------------------------------------------------------------------------
+  cloud_workflows:
+    sample-data-pipeline:
+      name: "sample-data-pipeline"
+      description: "Cloud Workflow state machine for orchestrating serverless tasks"
+      source_contents: |
+        main:
+          params: [args]
+          steps:
+            - init:
+                assign:
+                  - status: "STARTED"
+            - logStep:
+                call: sys.log
+                args:
+                  text: "Sample workflow executed successfully"
+                  severity: "INFO"
+            - returnResult:
+                return:
+                  status: "COMPLETED"
+
+  # ----------------------------------------------------------------------------
+  # 4. Async Queues & Scheduler (Cloud Tasks & Cloud Scheduler)
+  # ----------------------------------------------------------------------------
+  cloud_tasks_queues:
+    order-processing-queue:
+      name: "order-processing-queue"
+      rate_limits:
+        max_dispatches_per_second: 50
+        max_concurrent_dispatches: 10
+        max_burst_size: 100
+      retry_config:
+        max_attempts: 5
+        max_retry_duration: "86400s"
+        min_backoff: "0.100s"
+        max_backoff: "3600s"
+
+  cloud_scheduler_jobs:
+    nightly-maintenance-trigger:
+      name: "nightly-maintenance-trigger"
+      description: "Nightly cron job triggering internal maintenance endpoint"
+      schedule: "0 2 * * *"
+      time_zone: "Asia/Kolkata"
+      http_target:
+        uri: "https://private-backend-service-dummy.run.app/health"
+        http_method: "GET"

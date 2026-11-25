@@ -81,9 +81,8 @@ resource "google_container_cluster" "clusters" {
   # Autopilot vs Standard Engine Mode
   enable_autopilot = each.value.mode == "AUTOPILOT" ? true : null
 
-  # For Standard clusters, remove default node pool and manage via 3-gke-node-pools.tf
-  remove_default_node_pool = each.value.mode == "STANDARD" ? true : null
-  initial_node_count       = each.value.mode == "STANDARD" ? 1 : null
+  # Modern GKE natively skips default node pool creation when initial_node_count
+  # and node_config are omitted. Node pools are managed separately in 3-gke-node-pools.tf.
 
   # VPC-Native IP Allocation Policy (Secondary ranges for Pods and Services)
   ip_allocation_policy {
