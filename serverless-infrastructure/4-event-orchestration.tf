@@ -35,9 +35,10 @@ resource "google_workflows_workflow" "workflows" {
   name            = each.value.name
   project         = each.value.project_id
   region          = each.value.region
-  description     = each.value.description
-  labels          = each.value.labels
-  service_account = each.value.create_sa ? google_service_account.workflow_sa[each.key].email : each.value.service_account
+  description         = each.value.description
+  labels              = each.value.labels
+  service_account     = each.value.create_sa ? google_service_account.workflow_sa[each.key].email : each.value.service_account
+  deletion_protection = each.value.deletion_protection
 
   source_contents = each.value.source_contents != null ? each.value.source_contents : <<-EOF
     # Placeholder workflow definition

@@ -295,9 +295,10 @@ locals {
       region          = try(v.region, local.default_region)
       description     = try(v.description, "Orchestration workflow ${try(v.name, tostring(k))}")
       labels          = merge(local.default_tags, try(v.labels, {}))
-      source_contents = try(v.source_contents, null)
-      service_account = try(v.service_account, null)
-      create_sa       = try(v.create_service_account, try(v.service_account, null) == null)
+      source_contents     = try(v.source_contents, null)
+      service_account     = try(v.service_account, null)
+      create_sa           = try(v.create_service_account, try(v.service_account, null) == null)
+      deletion_protection = try(v.deletion_protection, false)
     }
   }
 
