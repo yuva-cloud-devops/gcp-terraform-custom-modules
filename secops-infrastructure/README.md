@@ -1,10 +1,10 @@
-# Google Cloud Security Operations (SecOps) Infrastructure Domain
+# Google Cloud Security Operations (SecOps) & Observability Infrastructure Domain
 
 [![Terraform](https://img.shields.io/badge/Terraform-%3E%3D1.5.0-623CE4.svg?logo=terraform)](https://www.terraform.io/)
 [![Google Cloud](https://img.shields.io/badge/Google%20Cloud-%3E%3D5.0-4285F4.svg?logo=google-cloud)](https://cloud.google.com/)
 [![Security Hardened](https://img.shields.io/badge/SecOps-Zero%20Trust%20%7C%20CMEK%20%7C%20Compliance-success.svg)](#implementation-sequence)
 
-The **SecOps Infrastructure** domain provides a cohesive suite of enterprise-grade, YAML-driven Terraform custom modules to enforce cryptographic security, continuous auditing, perimeter protection, identity federation, zero-trust access, and software supply chain integrity across Google Cloud Platform landing zones.
+The **SecOps & Observability Infrastructure** domain provides a cohesive suite of enterprise-grade, YAML-driven Terraform custom modules to enforce cryptographic security, continuous auditing, perimeter protection, identity federation, zero-trust access, software supply chain integrity, multi-project metric scoping, automated incident alerting, and synthetic health monitoring across Google Cloud Platform landing zones.
 
 ---
 
@@ -13,19 +13,21 @@ The **SecOps Infrastructure** domain provides a cohesive suite of enterprise-gra
 ```
 secops-infrastructure/
 ├── 1. crypto-secrets-infra/          # Cloud KMS (CMEK, HSM), Secret Manager (Replication, IAM)
-├── 2. audit-compliance-infra/        # Data Access Audit Logs, Centralized SIEM Log Sinks
+├── 2. audit-compliance-infra/        # Data Access Audit Logs, Centralized SIEM Log Sinks, CIS Metrics
 ├── 3. zero-trust-security-infra/     # Identity-Aware Proxy (IAP), Workload Identity Federation (WIF)
 ├── 4. edge-security-infra/           # Cloud Armor, Cloud IDS, VPC Service Controls (VPC SC)
 ├── 5. threat-posture-infra/          # Security Command Center (SCC), Cloud Asset Inventory
 ├── 6. pki-data-security-infra/       # CAS (Private CA), Certificate Manager, Cloud DLP
-└── 7. container-security-infra/      # Binary Authorization, Artifact/Container Analysis
+├── 7. container-security-infra/      # Binary Authorization, Artifact/Container Analysis
+├── 8. monitoring-alerting-infra/     # Metric Scopes, Notification Channels, CIS Alert Policies
+└── 9. dashboards-uptime-infra/       # Synthetic Uptime Probes, SSL Expiry Alerts, Health Dashboards
 ```
 
 ---
 
 ## Implementation Sequence
 
-When provisioning SecOps infrastructure, execute modules in this dependency order:
+When provisioning SecOps & Observability infrastructure, execute modules in this dependency order:
 
 1. **`crypto-secrets-infra` & `audit-compliance-infra` (Start First)**
    - Every downstream workload (Cloud Storage, databases, Compute Engine, GKE) requires Customer-Managed Encryption Keys (CMEK), secure secret storage, and centralized audit logging sinks before workload provisioning begins.
@@ -35,6 +37,8 @@ When provisioning SecOps infrastructure, execute modules in this dependency orde
    - Configures organization-wide posture guardrails, compliance scans, and internal SSL/TLS Private CA infrastructure.
 4. **`container-security-infra` (Before GKE)**
    - Deploys Binary Authorization policies and Artifact Analysis attestations before starting GKE and containerized application deployments.
+5. **`monitoring-alerting-infra` & `dashboards-uptime-infra` (Continuous Observability)**
+   - Centralizes multi-project monitoring scopes, binds incident notification channels (Slack, PagerDuty, Email) to CIS GCP Benchmark v3 alerts, activates synthetic health probes, and deploys operational dashboards.
 
 ---
 
@@ -75,3 +79,10 @@ When provisioning SecOps infrastructure, execute modules in this dependency orde
 - **Documentation**: [`container-security-infra/README.md`](./container-security-infra/README.md)
 - **Reference Example**: [`examples/secops/container-security-setup/`](../examples/secops/container-security-setup/)
 
+### 8. `monitoring-alerting-infra`
+- **Purpose**: Declarative provisioning of Multi-Project Cloud Monitoring Metric Scopes, Notification Channels (Slack, PagerDuty, Email, Webhooks), automated CIS GCP Benchmark v3 security alerts (controls 2.4 - 2.12), and operational metric threshold policies.
+- **Documentation**: [`monitoring-alerting-infra/README.md`](./monitoring-alerting-infra/README.md)
+
+### 9. `dashboards-uptime-infra`
+- **Purpose**: Declarative provisioning of Multi-Region Synthetic Uptime Check Probes (HTTP/HTTPS/TCP), automated SSL/TLS Certificate Expiration alert policies, and production-ready Cloud Monitoring Dashboards (SecOps, Serverless, and Network Perimeter health).
+- **Documentation**: [`dashboards-uptime-infra/README.md`](./dashboards-uptime-infra/README.md)

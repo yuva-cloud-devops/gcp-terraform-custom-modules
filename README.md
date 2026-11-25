@@ -180,13 +180,32 @@ gcp-terraform-custom-modules/
 │   │   ├── outputs.tf                        # CA pools, cert maps, DLP template names & IDs
 │   │   ├── versions.tf                       # Provider constraints
 │   │   └── README.md                         # Detailed module documentation
-│   └── container-security-infra/             # Binary Authorization & Container Analysis (Grafeas)
-│       ├── 0-locals.tf                       # Dynamic YAML parser, reference resolvers & IAM mappings
-│       ├── 1-container-analysis.tf           # Container Analysis Grafeas notes & builder IAM
-│       ├── 2-binary-authorization-attestors.tf # Attestors (Cloud KMS / PGP keys) & Verifier IAM
-│       ├── 3-binary-authorization-policy.tf  # Deploy-time admission policy & cluster admission rules
+│   ├── container-security-infra/             # Binary Authorization & Container Analysis (Grafeas)
+│   │   ├── 0-locals.tf                       # Dynamic YAML parser, reference resolvers & IAM mappings
+│   │   ├── 1-container-analysis.tf           # Container Analysis Grafeas notes & builder IAM
+│   │   ├── 2-binary-authorization-attestors.tf # Attestors (Cloud KMS / PGP keys) & Verifier IAM
+│   │   ├── 3-binary-authorization-policy.tf  # Deploy-time admission policy & cluster admission rules
+│   │   ├── variables.tf                      # Input variables
+│   │   ├── outputs.tf                        # Notes, attestors & policy outputs
+│   │   ├── versions.tf                       # Provider constraints
+│   │   └── README.md                         # Detailed module documentation
+│   ├── monitoring-alerting-infra/            # Multi-Project Metric Scoping, Notification Channels, CIS Alert Policies
+│   │   ├── 0-locals.tf                       # Dynamic YAML parser, channel lookup & CIS alert definitions
+│   │   ├── 1-metric-scopes.tf                # Centralized multi-project monitoring metric scope attachment
+│   │   ├── 2-notification-channels.tf        # Slack, PagerDuty, Email, Webhook notification channels
+│   │   ├── 3-cis-security-alerts.tf          # Automated CIS GCP Benchmark v3 Section 2 security alert policies
+│   │   ├── 4-metric-threshold-alerts.tf      # Operational metric threshold, log-match, and MQL alert policies
+│   │   ├── variables.tf                      # Input variables
+│   │   ├── outputs.tf                        # Scoping project, channels, alert policies & summary
+│   │   ├── versions.tf                       # Provider constraints
+│   │   └── README.md                         # Detailed module documentation
+│   └── dashboards-uptime-infra/              # Synthetic Uptime Checks, SSL Expiry Alerts & Monitoring Dashboards
+│       ├── 0-locals.tf                       # Dynamic YAML parser, uptime checker & dashboard layouts
+│       ├── 1-uptime-checks.tf                # Multi-region synthetic uptime check probes (HTTP/HTTPS/TCP)
+│       ├── 2-uptime-alert-policies.tf        # Automated outage and SSL/TLS certificate expiry alert policies
+│       ├── 3-dashboards.tf                   # Pre-packaged (SecOps, Serverless, Network) & custom dashboards
 │       ├── variables.tf                      # Input variables
-│       ├── outputs.tf                        # Notes, attestors & policy outputs
+│       ├── outputs.tf                        # Uptime check IDs, alert policies & dashboard IDs
 │       ├── versions.tf                       # Provider constraints
 │       └── README.md                         # Detailed module documentation
 ├── storage-infrastructure/                   # Enterprise Cloud Storage, Persistent Disks & Filestore (NFS)
@@ -228,6 +247,8 @@ gcp-terraform-custom-modules/
 │   │   ├── threat-posture-setup/             # SCC Notifications & Cloud Asset Inventory Feeds example
 │   │   ├── pki-data-security-setup/          # Private CA Service, Certificate Manager & Cloud DLP example
 │   │   ├── container-security-setup/         # Binary Authorization & Container Analysis setup example
+│   │   ├── monitoring-alerting-setup/        # Multi-Project Scopes, Channels & CIS Alerts example
+│   │   ├── dashboards-uptime-setup/          # Synthetic Uptime Checks & Health Dashboards example
 │   │   └── storage/                          # Unified GCS, Persistent Disks & Filestore deployment example
 │   └── database/                             # Enterprise Cloud SQL, AlloyDB, Redis & Firestore example
 ├── .gitignore                                # Git ignore rules
@@ -255,6 +276,8 @@ gcp-terraform-custom-modules/
 | **SecOps** | **Threat & Posture Management (SCC & Cloud Asset Inventory)** | Dynamic YAML-driven continuous threat posture and asset drift management. Configures Security Command Center (SCC v2) project notification configs for real-time streaming of High/Critical security findings and anomalous IAM privilege escalations to Cloud Pub/Sub, continuous finding exports to BigQuery compliance data lakes, and Cloud Asset Inventory (CAI) real-time project feeds for instant detection of infrastructure drift across Firewalls, IAM, KMS, and Cloud Storage. | [`secops-infrastructure/threat-posture-infra`](./secops-infrastructure/threat-posture-infra/) |
 | **SecOps** | **PKI & Data Security (Private CA, Certificate Manager & Cloud DLP)** | Dynamic YAML-driven internal cryptographic trust, TLS certificate management, and automated sensitive data discovery. Deploys Google Cloud Certificate Authority Service (CAS) for `DEVOPS` and `ENTERPRISE` CA pools and Root/Subordinate CAs with hardware-backed keys, Certificate Manager for DNS authorizations and HTTPS Load Balancer Certificate Maps, and Cloud Data Loss Prevention (Cloud DLP / Sensitive Data Protection) for inspection templates, character masking de-identification, and scheduled storage/BigQuery scan triggers. | [`secops-infrastructure/pki-data-security-infra`](./secops-infrastructure/pki-data-security-infra/) |
 | **SecOps** | **Container Security (Binary Authorization & Grafeas)** | Declarative YAML-driven container admission control and supply chain provenance. Deploys Container Analysis Grafeas notes for vulnerability scan and security approvals, Binary Authorization attestors with KMS/PGP keys, builder/verifier IAM, and admission policies. | [`secops-infrastructure/container-security-infra`](./secops-infrastructure/container-security-infra/) |
+| **SecOps** | **Monitoring & Alerting (Metric Scopes & CIS Alerts)** | Declarative YAML-driven multi-project Cloud Monitoring metric scopes, notification channels (Slack, PagerDuty, Email, Webhook), automated CIS GCP Foundations Benchmark v3 Section 2 security alerts (controls 2.4 - 2.12), and operational metric threshold policies. | [`secops-infrastructure/monitoring-alerting-infra`](./secops-infrastructure/monitoring-alerting-infra/) |
+| **SecOps** | **Dashboards & Synthetic Uptime (Probes & SSL Alerts)** | Declarative YAML-driven multi-region synthetic uptime check probes (HTTP/HTTPS/TCP), automated SSL/TLS certificate expiry alerts, and pre-packaged production Cloud Monitoring dashboards (SecOps, Serverless, Network perimeter). | [`secops-infrastructure/dashboards-uptime-infra`](./secops-infrastructure/dashboards-uptime-infra/) |
 | **Storage** | **Storage Infrastructure (GCS, Persistent Disks & Filestore)** | Declarative unified storage infrastructure provisioned via YAML. Efficiently and conditionally creates Cloud Storage (GCS) buckets with lifecycle rules, UBLA, WORM, and CMEK; Compute Persistent Disks (Zonal & Regional HA) with automated snapshot schedules and DR attachments; and Filestore NFS shares with granular network export options. | [`storage-infrastructure`](./storage-infrastructure/) |
 | **Database** | **Database Infrastructure (Cloud SQL, AlloyDB, Redis, Firestore, Spanner, Bigtable)** | Declarative unified database infrastructure provisioned via YAML (Option A). Conditionally creates Cloud SQL (PostgreSQL/MySQL/SQL Server with Regional HA, PSA/Public IP, and PITR); AlloyDB for PostgreSQL clusters and Read Pools; Memorystore Redis with `STANDARD_HA` cross-zone failover, RDB persistence snapshots, and AUTH; Firestore NoSQL databases with PITR; Cloud Spanner with 99.999% SLA, PITR, and backup schedules; and Cloud Bigtable with multi-cluster replication. Defaults to project default VPC when no network is specified. | [`database-infrastructure`](./database-infrastructure/) |
 

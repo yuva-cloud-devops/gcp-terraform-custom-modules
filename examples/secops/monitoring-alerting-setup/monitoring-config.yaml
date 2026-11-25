@@ -1,0 +1,45 @@
+project_id: "yuvaraj-internal-project"
+
+common_labels:
+  environment: "production"
+  managed_by: "terraform"
+  domain: "secops-observability"
+
+# 1. Multi-Project Metric Scopes
+metric_scopes:
+  scoping_project: "yuvaraj-internal-project"
+  monitored_projects: []
+
+# 2. Notification Channels
+notification_channels:
+  - name: "secops-email-channel"
+    type: "email"
+    display_name: "SecOps Security Team Email"
+    labels:
+      email_address: "yuvaraj.k@quadrasystems.net"
+
+# 3. CIS GCP Benchmark v3 Alerts
+cis_security_alerts:
+  enable: true
+  auto_close: "604800s" # 7 days
+  notification_channels:
+    - "secops-email-channel"
+
+# 4. Custom Metric Threshold & Log Match Alerts
+alert_policies:
+  - name: "cloudrun-error-rate-alert"
+    display_name: "Cloud Run Elevated 5xx Errors"
+    severity: "CRITICAL"
+    auto_close: "86400s"
+    notification_channels:
+      - "secops-email-channel"
+    conditions:
+      - type: "threshold"
+        display_name: "Cloud Run 5xx Errors > 5/min"
+        filter: 'resource.type = "cloud_run_revision" AND metric.type = "run.googleapis.com/request_count" AND metric.label.response_code_class = "5xx"'
+        comparison: "COMPARISON_GT"
+        threshold_value: 5
+        duration: "60s"
+        alignment_period: "60s"
+        per_series_aligner: "ALIGN_RATE"
+        cross_series_reducer: "REDUCE_SUM"

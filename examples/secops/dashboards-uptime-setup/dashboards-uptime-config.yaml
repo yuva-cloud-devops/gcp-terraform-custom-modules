@@ -1,0 +1,31 @@
+project_id: "yuvaraj-internal-project"
+
+common_labels:
+  environment: "production"
+  managed_by: "terraform"
+  domain: "secops-observability"
+
+# 1. Synthetic Uptime Checks
+uptime_checks:
+  - name: "public-web-uptime"
+    display_name: "Public Web Service Health Check"
+    host: "cloud.google.com"
+    protocol: "HTTPS"
+    path: "/"
+    port: 443
+    period: "300s"
+    timeout: "10s"
+    selected_regions:
+      - "USA"
+      - "EUROPE"
+      - "ASIA_PACIFIC"
+    alert_on_failure: true
+    alert_on_ssl_expiry: true
+    ssl_expiry_days: 30
+    notification_channels: []
+
+# 2. Operational Dashboards
+dashboards:
+  enable_secops_dashboard: true
+  enable_serverless_dashboard: true
+  enable_network_dashboard: true
