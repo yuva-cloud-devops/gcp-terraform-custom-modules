@@ -54,11 +54,6 @@ locals {
     }
   }
 
-  # Helper lookup to resolve channel names in alert policy configs
-  channel_lookup = {
-    for k, v in google_monitoring_notification_channel.channels : k => v.id
-  }
-
   # ----------------------------------------------------------------------------
   # 3. CIS GCP Benchmark v3 Security Alerts (Section 2 Controls 2.4 - 2.12)
   # ----------------------------------------------------------------------------
@@ -66,13 +61,7 @@ locals {
   enable_cis_alerts  = try(local.raw_cis_alerts.enable, true)
   cis_auto_close     = try(local.raw_cis_alerts.auto_close, "604800s") # 7 days
   cis_target_project = try(local.raw_cis_alerts.project_id, local.default_project_id)
-
-  # Default notification channels for CIS alerts (resolved to channel names or raw IDs)
-  cis_channel_names = try(local.raw_cis_alerts.notification_channels, [])
-  cis_resolved_channels = [
-    for ch in local.cis_channel_names :
-    try(local.channel_lookup[ch], ch)
-  ]
+  cis_channel_names  = try(local.raw_cis_alerts.notification_channels, [])
 
   # Built-in CIS Benchmark Alert Definitions (matching Domain 1 log metrics)
   default_cis_definitions = {
@@ -151,7 +140,7 @@ locals {
       doc_summary  = v.doc_summary
       severity     = v.severity
       auto_close   = local.cis_auto_close
-      channels     = local.cis_resolved_channels
+      channels     = local.cis_channel_names
     }
     if try(local.raw_cis_alerts.exclusions, null) == null || !contains(try(local.raw_cis_alerts.exclusions, []), k)
   } : {}
@@ -177,10 +166,7 @@ locals {
         mime_type = "text/markdown"
       })
 
-      notification_channels = [
-        for ch in try(a.notification_channels, []) :
-        try(local.channel_lookup[ch], ch)
-      ]
+      notification_channels = try(a.notification_channels, [])
 
       conditions = [
         for idx, cond in try(a.conditions, []) : {

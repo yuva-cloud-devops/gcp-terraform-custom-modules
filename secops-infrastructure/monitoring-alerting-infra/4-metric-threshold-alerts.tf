@@ -79,7 +79,10 @@ resource "google_monitoring_alert_policy" "custom_alerts" {
     }
   }
 
-  notification_channels = each.value.notification_channels
+  notification_channels = [
+    for ch in each.value.notification_channels :
+    try(google_monitoring_notification_channel.channels[ch].id, ch)
+  ]
 
   alert_strategy {
     auto_close = each.value.auto_close
