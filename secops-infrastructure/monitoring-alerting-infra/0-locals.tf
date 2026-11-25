@@ -63,70 +63,79 @@ locals {
   cis_target_project = try(local.raw_cis_alerts.project_id, local.default_project_id)
   cis_channel_names  = try(local.raw_cis_alerts.notification_channels, [])
 
-  # Built-in CIS Benchmark Alert Definitions (matching Domain 1 log metrics)
+  # Built-in CIS Benchmark Alert Definitions (matching Cloud Logging audit events)
   default_cis_definitions = {
     "cis_iam_policy_changes" = {
-      control     = "CIS 2.4"
-      metric_name = "cis_iam_policy_changes"
+      control      = "CIS 2.4"
+      metric_name  = "cis_iam_policy_changes"
       display_name = "[CIS 2.4] Security Alert: IAM Policy Changes Detected"
       doc_summary  = "An IAM policy modification occurred. Investigate immediately to verify authorization and prevent unauthorized privilege escalation."
       severity     = "CRITICAL"
+      log_filter   = "(protoPayload.serviceName=\"iam.googleapis.com\" OR protoPayload.serviceName=\"resourcemanager.googleapis.com\") AND (protoPayload.methodName:\"SetIamPolicy\" OR protoPayload.methodName:\"SetOrgPolicy\")"
     }
     "cis_audit_config_changes" = {
-      control     = "CIS 2.5"
-      metric_name = "cis_audit_config_changes"
+      control      = "CIS 2.5"
+      metric_name  = "cis_audit_config_changes"
       display_name = "[CIS 2.5] Security Alert: Audit Logging Configuration Modified"
       doc_summary  = "Data Access audit logging configuration was altered. Disabling audit logs can blind forensic threat detection."
       severity     = "CRITICAL"
+      log_filter   = "protoPayload.methodName=\"SetIamPolicy\" AND protoPayload.serviceData.policyDelta.auditConfigDeltas:*"
     }
     "cis_custom_role_changes" = {
-      control     = "CIS 2.6"
-      metric_name = "cis_custom_role_changes"
+      control      = "CIS 2.6"
+      metric_name  = "cis_custom_role_changes"
       display_name = "[CIS 2.6] Security Alert: Custom IAM Role Created, Deleted or Updated"
       doc_summary  = "A custom IAM role was modified. Verify whether new permissions grant overly permissive or administrative access."
       severity     = "ERROR"
+      log_filter   = "resource.type=\"iam_role\" AND (protoPayload.methodName:\"CreateRole\" OR protoPayload.methodName:\"DeleteRole\" OR protoPayload.methodName:\"UpdateRole\")"
     }
     "cis_firewall_rule_changes" = {
-      control     = "CIS 2.7"
-      metric_name = "cis_firewall_rule_changes"
+      control      = "CIS 2.7"
+      metric_name  = "cis_firewall_rule_changes"
       display_name = "[CIS 2.7] Security Alert: VPC Firewall Rule Modified"
       doc_summary  = "A VPC firewall rule was inserted, deleted, or patched. Ensure zero open access to administrative ports (SSH 22, RDP 3389)."
       severity     = "ERROR"
+      log_filter   = "resource.type=\"gce_firewall_rule\" AND (protoPayload.methodName:\"insert\" OR protoPayload.methodName:\"delete\" OR protoPayload.methodName:\"patch\")"
     }
     "cis_network_route_changes" = {
-      control     = "CIS 2.8"
-      metric_name = "cis_network_route_changes"
+      control      = "CIS 2.8"
+      metric_name  = "cis_network_route_changes"
       display_name = "[CIS 2.8] Security Alert: VPC Network Route Modified"
       doc_summary  = "A custom VPC network route was created or removed. Verify route targets to prevent unauthorized traffic redirection."
       severity     = "ERROR"
+      log_filter   = "resource.type=\"gce_route\" AND (protoPayload.methodName:\"insert\" OR protoPayload.methodName:\"delete\")"
     }
     "cis_vpc_network_changes" = {
-      control     = "CIS 2.9"
-      metric_name = "cis_vpc_network_changes"
+      control      = "CIS 2.9"
+      metric_name  = "cis_vpc_network_changes"
       display_name = "[CIS 2.9] Security Alert: VPC Network or Subnet Modified"
       doc_summary  = "VPC network topology or subnet configuration was updated. Review against zero-trust architectural blueprints."
       severity     = "WARNING"
+      log_filter   = "resource.type=\"gce_network\" AND (protoPayload.methodName:\"insert\" OR protoPayload.methodName:\"delete\" OR protoPayload.methodName:\"patch\")"
     }
     "cis_storage_iam_changes" = {
-      control     = "CIS 2.10"
-      metric_name = "cis_storage_iam_changes"
+      control      = "CIS 2.10"
+      metric_name  = "cis_storage_iam_changes"
       display_name = "[CIS 2.10] Security Alert: Cloud Storage IAM Permissions Modified"
       doc_summary  = "Bucket IAM permissions changed. Ensure allUsers/allAuthenticatedUsers are prohibited from accessing sensitive compliance data."
       severity     = "CRITICAL"
+      log_filter   = "protoPayload.serviceName=\"storage.googleapis.com\" AND protoPayload.methodName=\"storage.setIamPermissions\""
     }
     "cis_cloud_sql_changes" = {
-      control     = "CIS 2.11"
-      metric_name = "cis_cloud_sql_changes"
+      control      = "CIS 2.11"
+      metric_name  = "cis_cloud_sql_changes"
       display_name = "[CIS 2.11] Security Alert: Cloud SQL Database Configuration Updated"
       doc_summary  = "A managed database instance was modified or deleted. Confirm whether unauthorized public IPs or flags were applied."
       severity     = "ERROR"
+      log_filter   = "protoPayload.serviceName=\"cloudsql.googleapis.com\" AND (protoPayload.methodName:\"update\" OR protoPayload.methodName:\"delete\")"
     }
     "cis_kms_key_destruction" = {
-      control     = "CIS 2.12"
-      metric_name = "cis_kms_key_destruction"
+      control      = "CIS 2.12"
+      metric_name  = "cis_kms_key_destruction"
       display_name = "[CIS 2.12] Security Alert: Cloud KMS CryptoKey Version Scheduled for Destruction"
       doc_summary  = "A customer-managed cryptographic key (CMEK) was scheduled for permanent destruction. Immediate action is required to prevent data loss."
       severity     = "CRITICAL"
+      log_filter   = "protoPayload.serviceName=\"cloudkms.googleapis.com\" AND protoPayload.methodName=\"google.crypto.kms.v1.KeyManagementService.DestroyCryptoKeyVersion\""
     }
   }
 
@@ -141,6 +150,7 @@ locals {
       severity     = v.severity
       auto_close   = local.cis_auto_close
       channels     = local.cis_channel_names
+      log_filter   = v.log_filter
     }
     if try(local.raw_cis_alerts.exclusions, null) == null || !contains(try(local.raw_cis_alerts.exclusions, []), k)
   } : {}

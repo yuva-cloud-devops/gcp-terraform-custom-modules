@@ -21,19 +21,8 @@ resource "google_monitoring_alert_policy" "cis_alerts" {
 
   conditions {
     display_name = each.value.display_name
-    condition_threshold {
-      filter          = "resource.type = \"global\" AND metric.type = \"logging.googleapis.com/user/${each.value.metric_name}\""
-      comparison      = "COMPARISON_GT"
-      threshold_value = 0
-      duration        = "0s"
-      trigger {
-        count = 1
-      }
-      aggregations {
-        alignment_period     = "60s"
-        per_series_aligner   = "ALIGN_DELTA"
-        cross_series_reducer = "REDUCE_SUM"
-      }
+    condition_matched_log {
+      filter = each.value.log_filter
     }
   }
 
@@ -43,7 +32,9 @@ resource "google_monitoring_alert_policy" "cis_alerts" {
   ]
 
   alert_strategy {
-    auto_close = each.value.auto_close
+    notification_rate_limit {
+      period = "300s"
+    }
   }
 
   user_labels = merge(local.common_labels, {
