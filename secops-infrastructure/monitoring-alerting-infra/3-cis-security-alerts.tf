@@ -48,7 +48,7 @@ resource "google_monitoring_alert_policy" "cis_alerts" {
 
   user_labels = merge(local.common_labels, {
     compliance_framework = "cis_gcp_benchmark_v3"
-    control_id           = replace(lower(each.value.control), " ", "_")
+    control_id           = replace(replace(lower(each.value.control), " ", "_"), ".", "_")
     severity             = lower(each.value.severity)
   })
 }
